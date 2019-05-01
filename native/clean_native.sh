@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-[ -f slnative ] && rm slnative || echo "slnative not found."
+[ -f wasmnative ] && rm wasmnative || echo "wasmnative not found."
