@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-[[ -f sl-component.jar ]] && rm sl-component.jar || echo "sl-component.jar not found"
+[[ -f wasm-component.jar ]] && rm wasm-component.jar || echo "wasm-component.jar not found"
