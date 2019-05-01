@@ -3,10 +3,10 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>com.oracle</groupId>
-    <artifactId>simplelanguage-parent</artifactId>
+    <artifactId>wasmlanguage-parent</artifactId>
     <version>1.0.0-rc16-SNAPSHOT</version>
   </parent>
-  <artifactId>simplelanguage</artifactId>
+  <artifactId>wasmlanguage</artifactId>
   <build>
     <plugins>
       <plugin>
@@ -40,7 +40,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <finalName>simplelanguage</finalName>
+              <finalName>wasmlanguage</finalName>
               <artifactSet>
                 <excludes>
                   <exclude>junit:junit</exclude>

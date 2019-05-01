@@ -11,7 +11,7 @@ jdk:
 
 env:
     - GRAALVM_VERSION="1.0.0-rc16"
-    - GRAALVM_VERSION="NONE" SL_BUILD_NATIVE="false"
+    - GRAALVM_VERSION="NONE" WASM_BUILD_NATIVE="false"
 
 matrix:
     exclude:
@@ -25,7 +25,7 @@ matrix:
 install:
     - |
         # Component installation is currently broken. Re-enable once fixed.
-        # cd .. && mv simplelanguage "simple language" && cd "simple language"
+        # cd .. && mv wasmlanguage "wasm language" && cd "wasm language"
         if [[ "$GRAALVM_VERSION" != "NONE" ]]; then
           if [[ "$TRAVIS_OS_NAME" == "osx" ]];   then DOWNLOAD_OS_NAME="macos"; fi
           if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then DOWNLOAD_OS_NAME="linux"; fi
@@ -39,14 +39,14 @@ install:
 
 script:
     - mvn package
-    - ./sl language/tests/Add.sl
-    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then ./native/slnative language/tests/Add.sl; fi
-    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/gu" install -L component/sl-component.jar ; fi
-    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/sl" language/tests/Add.sl; fi
-    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/slnative" language/tests/Add.sl; fi
-    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/polyglot" --jvm --language sl --file language/tests/Add.sl; fi
+    - ./wasm language/tests/Add.wat
+    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then ./native/wasmnative language/tests/Add.wat; fi
+    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/gu" install -L component/wasm-component.jar ; fi
+    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/wasm" language/tests/Add.wat; fi
+    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/wasmnative" language/tests/Add.wat; fi
+    - if [[ "$GRAALVM_VERSION" != "NONE" ]]; then "$JAVA_HOME/bin/polyglot" --jvm --language wasm --file language/tests/Add.wat; fi
     - ./generate_parser
     - mvn package
-    - ./sl language/tests/Add.sl
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then shellcheck sl; fi
+    - ./wasm language/tests/Add.wat
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then shellcheck wasm; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then (find . -name '*.sh' | grep -v graalvm | xargs shellcheck); fi
