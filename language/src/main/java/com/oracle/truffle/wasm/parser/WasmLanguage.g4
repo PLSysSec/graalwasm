@@ -43,11 +43,11 @@
  * The parser and lexer need to be generated using "mx create-wasm-parser".
  */
 
-grammar SimpleLanguage;
+grammar WasmLanguage;
 
 @parser::header
 {
-// DO NOT MODIFY - generated from SimpleLanguage.g4 using "mx create-wasm-parser"
+// DO NOT MODIFY - generated from WasmLanguage.g4 using "mx create-wasm-parser"
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +64,7 @@ import com.oracle.truffle.wasm.parser.WasmParseError;
 
 @lexer::header
 {
-// DO NOT MODIFY - generated from SimpleLanguage.g4 using "mx create-wasm-parser"
+// DO NOT MODIFY - generated from WasmLanguage.g4 using "mx create-wasm-parser"
 }
 
 @parser::members
@@ -96,8 +96,8 @@ private static void throwParseError(Source source, int line, int charPositionInL
 }
 
 public static Map<String, RootCallTarget> parseWasm(WasmLanguage language, Source source) {
-    SimpleLanguageLexer lexer = new SimpleLanguageLexer(CharStreams.fromString(source.getCharacters().toString()));
-    SimpleLanguageParser parser = new SimpleLanguageParser(new CommonTokenStream(lexer));
+    WasmLanguageLexer lexer = new WasmLanguageLexer(CharStreams.fromString(source.getCharacters().toString()));
+    WasmLanguageParser parser = new WasmLanguageParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();
     parser.removeErrorListeners();
     BailoutErrorListener listener = new BailoutErrorListener(source);
@@ -105,244 +105,691 @@ public static Map<String, RootCallTarget> parseWasm(WasmLanguage language, Sourc
     parser.addErrorListener(listener);
     parser.factory = new WasmNodeFactory(language, source);
     parser.source = source;
-    parser.simplelanguage();
+    parser.wasmlanguage();
     return parser.factory.getAllFunctions();
 }
 }
 
-// parser
+/*
+Copyright (c) 2019 Renata Hodovan.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+// parser grammar WatParser;
+
+// options { tokenVocab=WatLexer; }
+
+wasmlanguage
+  : module
+  ;
 
 
+value
+  : INT | FLOAT
+  ;
 
+/* Auxiliaries */
 
-simplelanguage
-:
-function function* EOF
-;
+name
+  : STRING
+  ;
 
+/* Types */
 
-function
-:
-'function'
-IDENTIFIER
-s='('
-                                                { factory.startFunction($IDENTIFIER, $s); }
-(
-    IDENTIFIER                                  { factory.addFormalParameter($IDENTIFIER); }
-    (
-        ','
-        IDENTIFIER                              { factory.addFormalParameter($IDENTIFIER); }
-    )*
-)?
-')'
-body=block[false]                               { factory.finishFunction($body.result); }
-;
+value_type
+  : VALUE_TYPE
+  ;
 
+elem_type
+  : FUNCREF
+  ;
 
+global_type
+  : value_type | LPAR MUT value_type RPAR
+  ;
 
-block [boolean inLoop] returns [WasmStatementNode result]
-:                                               { factory.startBlock();
-                                                  List<WasmStatementNode> body = new ArrayList<>(); }
-s='{'
-(
-    statement[inLoop]                           { body.add($statement.result); }
-)*
-e='}'
-                                                { $result = factory.finishBlock(body, $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
-;
+def_type
+  : LPAR FUNC func_type RPAR
+  ;
 
+func_type
+  : (LPAR (RESULT value_type* | PARAM value_type* | PARAM bind_var value_type) RPAR)*
+  ;
 
-statement [boolean inLoop] returns [WasmStatementNode result]
-:
-(
-    while_statement                             { $result = $while_statement.result; }
-|
-    b='break'                                   { if (inLoop) { $result = factory.createBreak($b); } else { SemErr($b, "break used outside of loop"); } }
-    ';'
-|
-    c='continue'                                { if (inLoop) { $result = factory.createContinue($c); } else { SemErr($c, "continue used outside of loop"); } }
-    ';'
-|
-    if_statement[inLoop]                        { $result = $if_statement.result; }
-|
-    return_statement                            { $result = $return_statement.result; }
-|
-    expression ';'                              { $result = $expression.result; }
-|
-    d='debugger'                                { $result = factory.createDebugger($d); }
-    ';'
-)
-;
+table_type
+  : NAT NAT? elem_type
+  ;
 
+memory_type
+  : NAT NAT?
+  ;
 
-while_statement returns [WasmStatementNode result]
-:
-w='while'
-'('
-condition=expression
-')'
-body=block[true]                                { $result = factory.createWhile($w, $condition.result, $body.result); }
-;
+type_use
+  : LPAR TYPE var RPAR
+  ;
 
+/* Immediates */
 
-if_statement [boolean inLoop] returns [WasmStatementNode result]
-:
-i='if'
-'('
-condition=expression
-')'
-then=block[inLoop]                              { WasmStatementNode elsePart = null; }
-(
-    'else'
-    block[inLoop]                               { elsePart = $block.result; }
-)?                                              { $result = factory.createIf($i, $condition.result, $then.result, elsePart); }
-;
+literal
+  : NAT | INT | FLOAT
+  ;
 
+var
+  : NAT | VAR
+  ;
 
-return_statement returns [WasmStatementNode result]
-:
-r='return'                                      { WasmExpressionNode value = null; }
-(
-    expression                                  { value = $expression.result; }
-)?                                              { $result = factory.createReturn($r, value); }
-';'
-;
+bind_var
+  : VAR
+  ;
 
+/* Instructions & Expressions */
 
-expression returns [WasmExpressionNode result]
-:
-logic_term                                      { $result = $logic_term.result; }
-(
-    op='||'
-    logic_term                                  { $result = factory.createBinary($op, $result, $logic_term.result); }
-)*
-;
+instr
+  : plain_instr
+  | call_instr_instr
+  | block_instr
+  | expr
+  ;
 
+plain_instr
+  : UNREACHABLE
+  | NOP
+  | DROP
+  | SELECT
+  | BR var
+  | BR_IF var
+  | BR_TABLE var+
+  | RETURN
+  | CALL var
+  | LOCAL_GET var
+  | LOCAL_SET var
+  | LOCAL_TEE var
+  | GLOBAL_GET var
+  | GLOBAL_SET var
+  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?
+  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?
+  | MEMORY_SIZE
+  | MEMORY_GROW
+  | CONST literal
+  | TEST
+  | COMPARE
+  | UNARY
+  | BINARY
+  | CONVERT
+  ;
 
-logic_term returns [WasmExpressionNode result]
-:
-logic_factor                                    { $result = $logic_factor.result; }
-(
-    op='&&'
-    logic_factor                                { $result = factory.createBinary($op, $result, $logic_factor.result); }
-)*
-;
+call_instr
+  : CALL_INDIRECT type_use? call_instr_params
+  ;
 
+call_instr_params
+  : (LPAR PARAM value_type* RPAR)* (LPAR RESULT value_type* RPAR)*
+  ;
 
-logic_factor returns [WasmExpressionNode result]
-:
-arithmetic                                      { $result = $arithmetic.result; }
-(
-    op=('<' | '<=' | '>' | '>=' | '==' | '!=' )
-    arithmetic                                  { $result = factory.createBinary($op, $result, $arithmetic.result); }
-)?
-;
+call_instr_instr
+  : CALL_INDIRECT type_use? call_instr_params_instr
+  ;
 
+call_instr_params_instr
+  : (LPAR PARAM value_type* RPAR)* call_instr_results_instr
+  ;
 
-arithmetic returns [WasmExpressionNode result]
-:
-term                                            { $result = $term.result; }
-(
-    op=('+' | '-')
-    term                                        { $result = factory.createBinary($op, $result, $term.result); }
-)*
-;
+call_instr_results_instr
+  : (LPAR RESULT value_type* RPAR)* instr
+  ;
 
+block_instr
+  : (BLOCK | LOOP) bind_var? block END bind_var?
+  | IF bind_var? block (ELSE bind_var? instr_list)? END bind_var?
+  ;
 
-term returns [WasmExpressionNode result]
-:
-factor                                          { $result = $factor.result; }
-(
-    op=('*' | '/')
-    factor                                      { $result = factory.createBinary($op, $result, $factor.result); }
-)*
-;
+block_type
+  : LPAR RESULT value_type RPAR
+  ;
 
+block
+  : block_type? instr_list
+  ;
 
-factor returns [WasmExpressionNode result]
-:
-(
-    IDENTIFIER                                  { WasmExpressionNode assignmentName = factory.createStringLiteral($IDENTIFIER, false); }
-    (
-        member_expression[null, null, assignmentName] { $result = $member_expression.result; }
-    |
-                                                { $result = factory.createRead(assignmentName); }
-    )
-|
-    STRING_LITERAL                              { $result = factory.createStringLiteral($STRING_LITERAL, true); }
-|
-    NUMERIC_LITERAL                             { $result = factory.createNumericLiteral($NUMERIC_LITERAL); }
-|
-    s='('
-    expr=expression
-    e=')'                                       { $result = factory.createParenExpression($expr.result, $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
-)
-;
+expr
+  : LPAR expr1 RPAR
+  ;
 
+expr1
+  : plain_instr expr*
+  | CALL_INDIRECT call_expr_type
+  | BLOCK bind_var? block
+  | LOOP bind_var? block
+  | IF bind_var? if_block
+  ;
 
-member_expression [WasmExpressionNode r, WasmExpressionNode assignmentReceiver, WasmExpressionNode assignmentName] returns [WasmExpressionNode result]
-:                                               { WasmExpressionNode receiver = r;
-                                                  WasmExpressionNode nestedAssignmentName = null; }
-(
-    '('                                         { List<WasmExpressionNode> parameters = new ArrayList<>();
-                                                  if (receiver == null) {
-                                                      receiver = factory.createRead(assignmentName);
-                                                  } }
-    (
-        expression                              { parameters.add($expression.result); }
-        (
-            ','
-            expression                          { parameters.add($expression.result); }
-        )*
-    )?
-    e=')'
-                                                { $result = factory.createCall(receiver, parameters, $e); }
-|
-    '='
-    expression                                  { if (assignmentName == null) {
-                                                      SemErr($expression.start, "invalid assignment target");
-                                                  } else if (assignmentReceiver == null) {
-                                                      $result = factory.createAssignment(assignmentName, $expression.result);
-                                                  } else {
-                                                      $result = factory.createWriteProperty(assignmentReceiver, assignmentName, $expression.result);
-                                                  } }
-|
-    '.'                                         { if (receiver == null) {
-                                                       receiver = factory.createRead(assignmentName);
-                                                  } }
-    IDENTIFIER
-                                                { nestedAssignmentName = factory.createStringLiteral($IDENTIFIER, false);
-                                                  $result = factory.createReadProperty(receiver, nestedAssignmentName); }
-|
-    '['                                         { if (receiver == null) {
-                                                      receiver = factory.createRead(assignmentName);
-                                                  } }
-    expression
-                                                { nestedAssignmentName = $expression.result;
-                                                  $result = factory.createReadProperty(receiver, nestedAssignmentName); }
-    ']'
-)
-(
-    member_expression[$result, receiver, nestedAssignmentName] { $result = $member_expression.result; }
-)?
-;
+call_expr_type
+  : type_use? call_expr_params
+  ;
 
-// lexer
+call_expr_params
+  : (LPAR PARAM value_type* RPAR)* call_expr_results
+  ;
 
-WS : [ \t\r\n\u000C]+ -> skip;
-COMMENT : '/*' .*? '*/' -> skip;
-LINE_COMMENT : '//' ~[\r\n]* -> skip;
+call_expr_results
+  : (LPAR RESULT value_type* RPAR)* expr*
+  ;
 
-fragment LETTER : [A-Z] | [a-z] | '_' | '$';
-fragment NON_ZERO_DIGIT : [1-9];
-fragment DIGIT : [0-9];
-fragment HEX_DIGIT : [0-9] | [a-f] | [A-F];
-fragment OCT_DIGIT : [0-7];
-fragment BINARY_DIGIT : '0' | '1';
-fragment TAB : '\t';
-fragment STRING_CHAR : ~('"' | '\\' | '\r' | '\n');
+if_block
+  : block_type if_block
+  | expr* LPAR THEN instr_list RPAR (LPAR ELSE instr_list RPAR)?
+  ;
 
-IDENTIFIER : LETTER (LETTER | DIGIT)*;
-STRING_LITERAL : '"' STRING_CHAR* '"';
-NUMERIC_LITERAL : '0' | NON_ZERO_DIGIT DIGIT*;
+instr_list
+  : instr* call_instr?
+  ;
 
+const_expr
+  : instr_list
+  ;
+
+/* Functions */
+
+func
+  : LPAR FUNC bind_var? func_fields RPAR
+  ;
+
+func_fields
+  : type_use? func_fields_body
+  | inline_import type_use? func_fields_import
+  | inline_export func_fields
+  ;
+
+func_fields_import
+  : (LPAR PARAM value_type* RPAR | LPAR PARAM bind_var value_type RPAR) func_fields_import_result
+  ;
+
+func_fields_import_result
+  : (LPAR RESULT value_type* RPAR)*
+  ;
+
+func_fields_body
+  : (LPAR PARAM value_type* RPAR | LPAR PARAM bind_var value_type RPAR)* func_result_body
+  ;
+
+func_result_body
+  : (LPAR RESULT value_type* RPAR)* func_body
+  ;
+
+func_body
+  : (LPAR LOCAL value_type* RPAR | LPAR LOCAL bind_var value_type RPAR)* instr_list
+  ;
+
+/* Tables, Memories & Globals */
+
+offset
+  : LPAR OFFSET const_expr RPAR
+  | expr
+  ;
+
+elem
+  : LPAR ELEM var? offset var* RPAR
+  ;
+
+table
+  : LPAR TABLE bind_var? table_fields RPAR
+  ;
+
+table_fields
+  : table_type
+  | inline_import table_type
+  | inline_export table_fields
+  | elem_type LPAR ELEM var* RPAR
+  ;
+
+data
+  : LPAR DATA var? offset STRING* RPAR
+  ;
+
+memory
+  : LPAR MEMORY bind_var? memory_fields RPAR
+  ;
+
+memory_fields
+  : memory_type
+  | inline_import memory_type
+  | inline_export memory_fields
+  | LPAR DATA STRING* RPAR
+  ;
+
+sglobal
+  : LPAR GLOBAL bind_var? global_fields RPAR
+  ;
+
+global_fields
+  : global_type const_expr
+  | inline_import global_type
+  | inline_export global_fields
+  ;
+
+/* Imports & Exports */
+
+import_desc
+  : LPAR FUNC bind_var? type_use RPAR
+  | LPAR FUNC bind_var? func_type RPAR
+  | LPAR TABLE bind_var? table_type RPAR
+  | LPAR MEMORY bind_var? memory_type RPAR
+  | LPAR GLOBAL bind_var? global_type RPAR
+  ;
+
+simport
+  :  LPAR IMPORT name name import_desc RPAR
+  ;
+
+inline_import
+  : LPAR IMPORT name name RPAR
+  ;
+
+export_desc
+  : LPAR FUNC var RPAR
+  | LPAR TABLE var RPAR
+  | LPAR MEMORY var RPAR
+  | LPAR GLOBAL var RPAR
+  ;
+
+export
+  : LPAR EXPORT name export_desc RPAR
+  ;
+
+inline_export
+  : LPAR EXPORT name RPAR
+  ;
+
+/* Modules */
+
+type_
+  : def_type
+  ;
+
+type_def
+  : LPAR TYPE bind_var? type_ RPAR
+  ;
+
+start
+  : LPAR START var RPAR
+  ;
+
+module_field
+  : type_def
+  | sglobal
+  | table
+  | memory
+  | func
+  | elem
+  | data
+  | start
+  | simport
+  | export
+  ;
+
+module_
+  : LPAR MODULE VAR? module_field* RPAR
+  ;
+
+/* Scripts */
+
+script_module
+  : module_
+  | LPAR MODULE VAR? (BIN | QUOTE) STRING* RPAR
+  ;
+
+action
+  : LPAR INVOKE VAR? name const_list RPAR
+  | LPAR GET VAR? name RPAR
+  ;
+
+assertion
+  : LPAR ASSERT_MALFORMED script_module STRING RPAR
+  | LPAR ASSERT_INVALID script_module STRING RPAR
+  | LPAR ASSERT_UNLINKABLE script_module STRING RPAR
+  | LPAR ASSERT_TRAP script_module STRING RPAR
+  | LPAR ASSERT_RETURN action const_list RPAR
+  | LPAR ASSERT_RETURN_CANONICAL_NAN action RPAR
+  | LPAR ASSERT_RETURN_ARITHMETIC_NAN action RPAR
+  | LPAR ASSERT_TRAP action STRING RPAR
+  | LPAR ASSERT_EXHAUSTION action STRING RPAR
+  ;
+
+cmd
+  : action
+  | assertion
+  | script_module
+  | LPAR REGISTER name VAR? RPAR
+  | meta
+  ;
+
+meta
+  : LPAR SCRIPT VAR? cmd* RPAR
+  | LPAR INPUT VAR? STRING RPAR
+  | LPAR OUTPUT VAR? STRING RPAR
+  | LPAR OUTPUT VAR? RPAR
+  ;
+
+wconst
+  : LPAR CONST literal RPAR
+  ;
+
+const_list
+  : wconst*
+  ;
+
+script
+  : cmd* EOF
+  | module_field+ EOF
+  ;
+
+module
+  : module_ EOF
+  | module_field* EOF
+  ;
+
+/*
+Copyright (c) 2019 Renata Hodovan.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+// lexer grammar WatLexer;
+
+LPAR : '(' ;
+RPAR : ')' ;
+
+NAT : Nat ;
+INT : Int ;
+FLOAT : Float ;
+STRING : String ;
+VALUE_TYPE : NXX ;
+CONST : NXX '.const' ;
+
+FUNCREF: 'funcref' ;
+MUT: 'mut' ;
+
+NOP: 'nop' ;
+UNREACHABLE: 'unreachable' ;
+DROP: 'drop' ;
+BLOCK: 'block' ;
+LOOP: 'loop' ;
+END: 'end' ;
+BR: 'br' ;
+BR_IF: 'br_if' ;
+BR_TABLE: 'br_table' ;
+RETURN: 'return' ;
+IF: 'if' ;
+THEN: 'then' ;
+ELSE: 'else' ;
+SELECT: 'select' ;
+CALL: 'call' ;
+CALL_INDIRECT: 'call_indirect' ;
+
+LOCAL_GET: 'local.get' ;
+LOCAL_SET: 'local.set' ;
+LOCAL_TEE: 'local.tee' ;
+GLOBAL_GET: 'global.get' ;
+GLOBAL_SET: 'global.set' ;
+
+LOAD : NXX '.load' (MEM_SIZE '_' SIGN)? ;
+STORE : NXX '.store' (MEM_SIZE)? ;
+
+OFFSET_EQ_NAT : 'offset=' Nat ;
+ALIGN_EQ_NAT : 'align=' Nat ;
+
+UNARY
+  : IXX '.clz'
+  | IXX '.ctz'
+  | IXX '.popcnt'
+  | FXX '.neg'
+  | FXX '.abs'
+  | FXX '.sqrt'
+  | FXX '.ceil'
+  | FXX '.floor'
+  | FXX '.trunc'
+  | FXX '.nearest'
+  ;
+
+BINARY
+  : IXX '.add'
+  | IXX '.sub'
+  | IXX '.mul'
+  | IXX '.div_s'
+  | IXX '.div_u'
+  | IXX '.rem_s'
+  | IXX '.rem_u'
+  | IXX '.and'
+  | IXX '.or'
+  | IXX '.xor'
+  | IXX '.shl'
+  | IXX '.shr_s'
+  | IXX '.shr_u'
+  | IXX '.rotl'
+  | IXX '.rotr'
+  | FXX '.add'
+  | FXX '.sub'
+  | FXX '.mul'
+  | FXX '.div'
+  | FXX '.min'
+  | FXX '.max'
+  | FXX '.copysign'
+  ;
+
+TEST
+  : IXX '.eqz'
+  ;
+
+COMPARE
+  : IXX '.eq'
+  | IXX '.ne'
+  | IXX '.lt_s'
+  | IXX '.lt_u'
+  | IXX '.le_s'
+  | IXX '.le_u'
+  | IXX '.gt_s'
+  | IXX '.gt_u'
+  | IXX '.ge_s'
+  | IXX '.ge_u'
+  | FXX '.eq'
+  | FXX '.ne'
+  | FXX '.lt'
+  | FXX '.le'
+  | FXX '.gt'
+  | FXX '.ge'
+  ;
+
+CONVERT
+  : 'i32.wrap_i64'
+  | 'i64.extend_i32_s'
+  | 'i64.extend_i32_u'
+  | 'f32.demote_f64'
+  | 'f64.promote_f32'
+  | IXX '.trunc_f32_s'
+  | IXX '.trunc_f32_u'
+  | IXX '.trunc_f64_s'
+  | IXX '.trunc_f64_u'
+  | FXX '.convert_i32_s'
+  | FXX '.convert_i32_u'
+  | FXX '.convert_i64_s'
+  | FXX '.convert_i64_u'
+  | 'f32.reinterpret_i32'
+  | 'f64.reinterpret_i64'
+  | 'i32.reinterpret_f32'
+  | 'i64.reinterpret_f64'
+  ;
+
+MEMORY_SIZE : 'memory.size' ;
+MEMORY_GROW : 'memory.grow' ;
+
+TYPE: 'type' ;
+FUNC: 'func' ;
+START: 'start' ;
+PARAM: 'param' ;
+RESULT: 'result' ;
+LOCAL: 'local' ;
+GLOBAL: 'global' ;
+TABLE: 'table' ;
+MEMORY: 'memory' ;
+ELEM: 'elem' ;
+DATA: 'data' ;
+OFFSET: 'offset' ;
+IMPORT: 'import' ;
+EXPORT: 'export' ;
+
+MODULE : 'module' ;
+BIN : 'binary' ;
+QUOTE : 'quote' ;
+
+SCRIPT: 'script' ;
+REGISTER: 'register' ;
+INVOKE: 'invoke' ;
+GET: 'get' ;
+ASSERT_MALFORMED: 'assert_malformed' ;
+ASSERT_INVALID: 'assert_invalid' ;
+ASSERT_UNLINKABLE: 'assert_unlinkable' ;
+ASSERT_RETURN: 'assert_return' ;
+ASSERT_RETURN_CANONICAL_NAN: 'assert_return_canonical_nan' ;
+ASSERT_RETURN_ARITHMETIC_NAN: 'assert_return_arithmetic_nan' ;
+ASSERT_TRAP: 'assert_trap' ;
+ASSERT_EXHAUSTION: 'assert_exhaustion' ;
+INPUT: 'input' ;
+OUTPUT: 'output' ;
+
+VAR : Name ;
+
+SPACE
+  : [ \t\r\n] -> skip
+  ;
+
+COMMENT
+  : ( '(;' .*? ';)'
+  | ';;' .*? '\n')-> skip
+  ;
+
+fragment Symbol
+  : '.' | '+' | '-' | '*' | '/' | '\\' | '^' | '~' | '=' | '<' | '>' | '!' | '?' | '@' | '#' | '$' | '%' | '&' | '|' | ':' | '\'' | '`'
+  ;
+
+fragment Num
+  : Digit ('_'? Digit)*
+  ;
+
+fragment HexNum
+  : HexDigit ('_'? HexDigit)*
+  ;
+
+fragment Sign
+  : '+' | '-'
+  ;
+
+fragment Digit
+  : [0-9]
+  ;
+
+fragment HexDigit
+  : [0-9a-fA-F]
+  ;
+
+fragment Letter
+  : [a-zA-Z]
+  ;
+
+fragment Nat : Num | ('0x' HexNum) ;
+fragment Int : Sign Nat ;
+fragment Frac : Num ;
+fragment HexFrac : HexNum ;
+
+fragment Float
+  : Sign? Num '.' Frac?
+  | Sign? Num ('.' Frac?)? ('e' | 'E') Sign? Num
+  | Sign? '0x' HexNum '.' HexFrac?
+  | Sign? '0x' HexNum ('.' HexFrac?)? ('p' | 'P') Sign? Num
+  | Sign? 'inf'
+  | Sign? 'nan'
+  | Sign? 'nan:' '0x' HexNum
+  ;
+
+fragment String
+  : '"' ( Char | '\n' | '\t' | '\\' | '\'' | '\\' HexDigit HexDigit | '\\u{' HexDigit+ '}' )* '"'
+  ;
+
+fragment Name
+  : '$' (Letter | Digit | '_' | Symbol)+
+  ;
+
+fragment Escape : [nrt'"\\] ;
+
+fragment IXX : 'i' ('32' | '64') ;
+fragment FXX : 'f' ('32' | '64') ;
+fragment NXX : IXX | FXX ;
+fragment MIXX : 'i' ('8' | '16' | '32' | '64') ;
+fragment MFXX : 'f' ('32' | '64') ;
+fragment SIGN : 's' | 'u' ;
+fragment MEM_SIZE : '8' | '16' | '32' ;
+
+fragment Char : ~["'\\\u0000-\u001f\u007f-\u00ff] ;
+fragment Ascii : [\u0000-\u007f] ;
+fragment Ascii_no_nl : [\u0000-\u0009\u000b-\u007f] ;
+fragment Utf8Cont : [\u0080-\u00bf] ;
+fragment Utf8 : Ascii | Utf8Enc ;
+fragment Utf8_no_nl : Ascii_no_nl | Utf8Enc ;
+
+fragment Utf8Enc
+  : [\u00c2-\u00df] Utf8Cont
+  | [\u00e0] [\u00a0-\u00bf] Utf8Cont
+  | [\u00ed] [\u0080-\u009f] Utf8Cont
+  | [\u00e1-\u00ec\u00ee-\u00ef] Utf8Cont Utf8Cont
+  | [\u00f0] [\u0090-\u00bf] Utf8Cont Utf8Cont
+  | [\u00f4] [\u0080-\u008f] Utf8Cont Utf8Cont
+  | [\u00f1-\u00f3] Utf8Cont Utf8Cont Utf8Cont
+  ;
