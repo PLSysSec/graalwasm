@@ -66,6 +66,7 @@ import com.oracle.truffle.wasm.nodes.controlflow.WasmContinueNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmDebuggerNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmFunctionBodyNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmIfNode;
+import com.oracle.truffle.wasm.nodes.controlflow.WasmNopNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmReturnNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmWhileNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmAddNodeGen;
@@ -93,6 +94,7 @@ import com.oracle.truffle.wasm.nodes.local.WasmReadLocalVariableNode;
 import com.oracle.truffle.wasm.nodes.local.WasmReadLocalVariableNodeGen;
 import com.oracle.truffle.wasm.nodes.local.WasmWriteLocalVariableNode;
 import com.oracle.truffle.wasm.nodes.local.WasmWriteLocalVariableNodeGen;
+import com.oracle.truffle.wasm.nodes.parametric.WasmDropNode;
 import com.oracle.truffle.wasm.nodes.util.WasmUnboxNodeGen;
 
 /**
@@ -332,6 +334,18 @@ public class WasmNodeFactory {
         return returnNode;
     }
 
+    public WasmStatementNode createNop(Token n) {
+        final WasmNopNode nopNode = new WasmNopNode();
+        srcFromToken(nopNode, n);
+        return nopNode;
+    }
+
+    public WasmStatementNode createDrop(Token d) {
+        final WasmDropNode dropNode = new WasmDropNode();
+        srcFromToken(dropNode, d);
+        return dropNode;
+    }
+
     /**
      * Returns the corresponding subclass of {@link WasmExpressionNode} for binary expressions. </br>
      * These nodes are currently not instrumented.
@@ -351,7 +365,7 @@ public class WasmNodeFactory {
 
         final WasmExpressionNode result;
         switch (opToken.getText()) {
-            case "+":
+            case "i32.add":
                 result = WasmAddNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "*":

@@ -235,7 +235,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             functions = WasmLanguageParser.parseWasm(this, decoratedSource);
         }
 
-        RootCallTarget main = functions.get("main");
+        RootCallTarget main = functions.get("$main");
         RootNode evalMain;
         if (main != null) {
             /*

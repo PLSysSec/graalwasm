@@ -209,17 +209,17 @@ bind_var
 
 /* Instructions & Expressions */
 
-instr
-  : plain_instr
-  | call_instr_instr
-  | block_instr
-  | expr
+instr returns [WasmStatementNode result]
+  : plain_instr                                 { $result = $plain_instr.result; }
+//  | call_instr_instr                            //{ $result = $CII.result; }
+//  | block_instr                                 //{ $result = $block_instr.result; }
+//  | expr                                        { $result = $expr.result; }
   ;
 
-plain_instr
-  : UNREACHABLE
-  | NOP
-  | DROP
+plain_instr returns [WasmStatementNode result]
+  : UNREACHABLE                                 //{ $result = factory.createUnreachable(); }
+  | NOP                                         { $result = factory.createNop($NOP); }
+  | DROP                                        { $result = factory.createDrop($DROP); }
   | SELECT
   | BR var
   | BR_IF var
@@ -235,14 +235,15 @@ plain_instr
   | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?
   | MEMORY_SIZE
   | MEMORY_GROW
-  | CONST literal
+  | CONST NAT                                   { $result = factory.createNumericLiteral($NAT); }
+  //| CONST literal                             { $result = factory.createNumericLiteral($literal); }
   | TEST
   | COMPARE
   | UNARY
   | BINARY
   | CONVERT
   ;
-
+/*
 call_instr
   : CALL_INDIRECT type_use? call_instr_params
   ;
@@ -276,12 +277,12 @@ block
   : block_type? instr_list
   ;
 
-expr
-  : LPAR expr1 RPAR
+expr returns [WasmStatementNode result]
+  : LPAR expr1 RPAR                             { $result = $expr1.result; }
   ;
 
-expr1
-  : plain_instr expr*
+expr1 returns [WasmStatementNode result]
+  : plain_instr expr*                           { $result = $plain_instr.result; }
   | CALL_INDIRECT call_expr_type
   | BLOCK bind_var? block
   | LOOP bind_var? block
@@ -304,27 +305,37 @@ if_block
   : block_type if_block
   | expr* LPAR THEN instr_list RPAR (LPAR ELSE instr_list RPAR)?
   ;
-
-instr_list
-  : instr* call_instr?
+*/
+instr_list [List<WasmStatementNode> body] returns [List<WasmStatementNode> result]
+  :
+    (
+    instr                                       { body.add($instr.result); }
+    )*
+//    call_instr?                                 { body.add($call_instr.result); }
+                                                { $result = body; }
   ;
-
+/*
 const_expr
   : instr_list
   ;
-
+*/
 /* Functions */
 
 func
-  : LPAR FUNC bind_var? func_fields RPAR
+  : LPAR FUNC VAR?                              { factory.startFunction($VAR, $LPAR); }
+    func_fields                                 { factory.finishFunction($func_fields.result); }
+    RPAR
   ;
 
-func_fields
-  : type_use? func_fields_body
-  | inline_import type_use? func_fields_import
-  | inline_export func_fields
+func_fields returns [WasmStatementNode result]
+  : type_use? func_fields_body                  { $result = $func_fields_body.result; }
+  // TODO create new block here?? + body List?
+  // TODO finishBlock will flatten => WasmStatementNode
+  // TODO trying to resolve BLOCK CREATION with PARENS: I NEED PARENSSS EITHER THAT OR NO NEW BLOCK/SCOPE
+//  | inline_import type_use? func_fields_import
+//  | inline_export func_fields
   ;
-
+/*
 func_fields_import
   : (LPAR PARAM value_type* RPAR | LPAR PARAM bind_var value_type RPAR) func_fields_import_result
   ;
@@ -332,21 +343,32 @@ func_fields_import
 func_fields_import_result
   : (LPAR RESULT value_type* RPAR)*
   ;
-
-func_fields_body
-  : (LPAR PARAM value_type* RPAR | LPAR PARAM bind_var value_type RPAR)* func_result_body
+*/
+func_fields_body returns [WasmStatementNode result]
+  : (
+    LPAR PARAM value_type* RPAR
+    | LPAR PARAM VAR value_type RPAR
+    )*
+    func_result_body                            { $result = $func_result_body.result; }
   ;
 
-func_result_body
-  : (LPAR RESULT value_type* RPAR)* func_body
-  ;
+func_result_body returns [WasmStatementNode result]
+  : (LPAR RESULT value_type* RPAR)* func_body   { $result = $func_body.result; }
+  ; // apparently part of "validation rules" => should I handle this? TODO handle mismatch
 
-func_body
-  : (LPAR LOCAL value_type* RPAR | LPAR LOCAL bind_var value_type RPAR)* instr_list
+func_body returns [WasmStatementNode result]
+  : (
+    LPAR LOCAL value_type* RPAR
+    | LPAR LOCAL bind_var value_type RPAR
+    )*                                          { factory.startBlock();
+                                                  List<WasmStatementNode> body = new ArrayList<>(); }
+    s=LPAR
+    res=instr_list[body]
+    e=RPAR                                      { $result = factory.finishBlock($res.result, $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
   ;
 
 /* Tables, Memories & Globals */
-
+/*
 offset
   : LPAR OFFSET const_expr RPAR
   | expr
@@ -391,9 +413,9 @@ global_fields
   | inline_import global_type
   | inline_export global_fields
   ;
-
+*/
 /* Imports & Exports */
-
+/*
 import_desc
   : LPAR FUNC bind_var? type_use RPAR
   | LPAR FUNC bind_var? func_type RPAR
@@ -424,9 +446,9 @@ export
 inline_export
   : LPAR EXPORT name RPAR
   ;
-
+*/
 /* Modules */
-
+/*
 type_
   : def_type
   ;
@@ -438,18 +460,18 @@ type_def
 start
   : LPAR START var RPAR
   ;
-
+*/
 module_field
-  : type_def
+  : /*type_def
   | sglobal
   | table
   | memory
-  | func
+  | */func/*
   | elem
   | data
   | start
   | simport
-  | export
+  | export*/
   ;
 
 module_
@@ -457,7 +479,7 @@ module_
   ;
 
 /* Scripts */
-
+/*
 script_module
   : module_
   | LPAR MODULE VAR? (BIN | QUOTE) STRING* RPAR
@@ -507,7 +529,7 @@ script
   : cmd* EOF
   | module_field+ EOF
   ;
-
+*/
 module
   : module_ EOF
   | module_field* EOF
@@ -575,11 +597,11 @@ SELECT: 'select' ;
 CALL: 'call' ;
 CALL_INDIRECT: 'call_indirect' ;
 
-LOCAL_GET: 'local.get' ;
-LOCAL_SET: 'local.set' ;
-LOCAL_TEE: 'local.tee' ;
-GLOBAL_GET: 'global.get' ;
-GLOBAL_SET: 'global.set' ;
+LOCAL_GET: 'get_local' ;
+LOCAL_SET: 'set_local' ;
+LOCAL_TEE: 'tee_local' ;
+GLOBAL_GET: 'get_global' ;
+GLOBAL_SET: 'set_global' ;
 
 LOAD : NXX '.load' (MEM_SIZE '_' SIGN)? ;
 STORE : NXX '.store' (MEM_SIZE)? ;

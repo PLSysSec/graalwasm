@@ -98,7 +98,7 @@ public final class WasmMain {
 
         try {
             Value result = context.eval(source);
-            if (context.getBindings(Wasm).getMember("main") == null) {
+            if (context.getBindings(Wasm).getMember("$main") == null) {
                 err.println("No function main() defined in Wasm source file.");
                 return 1;
             }
