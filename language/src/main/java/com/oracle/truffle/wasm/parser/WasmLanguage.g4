@@ -357,11 +357,12 @@ func_result_body returns [WasmStatementNode result]
   ; // apparently part of "validation rules" => should I handle this? TODO handle mismatch
 
 func_body returns [WasmStatementNode result]
-  : (
-    LPAR LOCAL value_type* RPAR
-    | LPAR LOCAL bind_var value_type RPAR
-    )*                                          { factory.startBlock();
+  :                                             { factory.startBlock();
                                                   List<WasmStatementNode> body = new ArrayList<>(); }
+    (
+    LPAR LOCAL value_type* RPAR                 // TODO add to body
+    | LPAR LOCAL bind_var value_type RPAR       // TODO add to body
+    )*
     s=LPAR
     res=instr_list[body]
     e=RPAR                                      { $result = factory.finishBlock($res.result, $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
