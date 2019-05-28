@@ -11,6 +11,8 @@ import com.oracle.truffle.wasm.nodes.WasmStatementNode;
 @NodeInfo(shortName = "drop", description = "The node implementing a drop statement")
 public final class WasmDropNode extends WasmStatementNode {
 
+    public WasmDropNode() {}
+
     @Override
     public void executeVoid(VirtualFrame frame) {
         // remove the top of the stack

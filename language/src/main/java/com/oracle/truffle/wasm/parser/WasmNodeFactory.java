@@ -69,6 +69,7 @@ import com.oracle.truffle.wasm.nodes.controlflow.WasmIfNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmNopNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmReturnNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmWhileNode;
+import com.oracle.truffle.wasm.nodes.controlflow.WasmUnreachableNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmAddNodeGen;
 import com.oracle.truffle.wasm.nodes.expression.WasmBigIntegerLiteralNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmDivNodeGen;
@@ -95,6 +96,7 @@ import com.oracle.truffle.wasm.nodes.local.WasmReadLocalVariableNodeGen;
 import com.oracle.truffle.wasm.nodes.local.WasmWriteLocalVariableNode;
 import com.oracle.truffle.wasm.nodes.local.WasmWriteLocalVariableNodeGen;
 import com.oracle.truffle.wasm.nodes.parametric.WasmDropNode;
+import com.oracle.truffle.wasm.nodes.parametric.WasmSelectNode;
 import com.oracle.truffle.wasm.nodes.util.WasmUnboxNodeGen;
 
 /**
@@ -251,52 +253,6 @@ public class WasmNodeFactory {
     }
 
     /**
-     * Returns an {@link WasmBreakNode} for the given token.
-     *
-     * @param breakToken The token containing the break node's info.
-     * @return A WasmBreakNode for the given token.
-     */
-    public WasmStatementNode createBreak(Token breakToken) {
-        final WasmBreakNode breakNode = new WasmBreakNode();
-        srcFromToken(breakNode, breakToken);
-        return breakNode;
-    }
-
-    /**
-     * Returns an {@link WasmContinueNode} for the given token.
-     *
-     * @param continueToken The token containing the continue node's info.
-     * @return A WasmContinueNode built using the given token.
-     */
-    public WasmStatementNode createContinue(Token continueToken) {
-        final WasmContinueNode continueNode = new WasmContinueNode();
-        srcFromToken(continueNode, continueToken);
-        return continueNode;
-    }
-
-    /**
-     * Returns an {@link WasmWhileNode} for the given parameters.
-     *
-     * @param whileToken The token containing the while node's info
-     * @param conditionNode The conditional node for this while loop
-     * @param bodyNode The body of the while loop
-     * @return A WasmWhileNode built using the given parameters. null if either conditionNode or
-     *         bodyNode is null.
-     */
-    public WasmStatementNode createWhile(Token whileToken, WasmExpressionNode conditionNode, WasmStatementNode bodyNode) {
-        if (conditionNode == null || bodyNode == null) {
-            return null;
-        }
-
-        conditionNode.addStatementTag();
-        final int start = whileToken.getStartIndex();
-        final int end = bodyNode.getSourceEndIndex();
-        final WasmWhileNode whileNode = new WasmWhileNode(conditionNode, bodyNode);
-        whileNode.setSourceSection(start, end - start);
-        return whileNode;
-    }
-
-    /**
      * Returns an {@link WasmIfNode} for the given parameters.
      *
      * @param ifToken The token containing the if node's info
@@ -334,6 +290,12 @@ public class WasmNodeFactory {
         return returnNode;
     }
 
+    public WasmStatementNode createUnreachable(Token u) {
+        final WasmUnreachableNode unreachableNode = new WasmUnreachableNode();
+        srcFromToken(unreachableNode, u);
+        return unreachableNode;
+    }
+
     public WasmStatementNode createNop(Token n) {
         final WasmNopNode nopNode = new WasmNopNode();
         srcFromToken(nopNode, n);
@@ -346,6 +308,16 @@ public class WasmNodeFactory {
         return dropNode;
     }
 
+    public WasmStatementNode createSelect(Token s) {
+        final WasmSelectNode selectNode = new WasmSelectNode();
+        srcFromToken(selectNode, s);
+        return selectNode;
+    }
+
+    public WasmExpressionNode createUnary(Token opToken) {
+        return null;
+    }
+
     /**
      * Returns the corresponding subclass of {@link WasmExpressionNode} for binary expressions. </br>
      * These nodes are currently not instrumented.
@@ -356,11 +328,11 @@ public class WasmNodeFactory {
      * @return A subclass of WasmExpressionNode using the given parameters based on the given opToken.
      *         null if either leftNode or rightNode is null.
      */
-    public WasmExpressionNode createBinary(Token opToken, WasmExpressionNode leftNode, WasmExpressionNode rightNode) {
+    public WasmExpressionNode createBinary(Token opToken, WasmExpressionNode rightNode, WasmExpressionNode leftNode) {
         if (leftNode == null || rightNode == null) {
             return null;
         }
-        final WasmExpressionNode leftUnboxed = WasmUnboxNodeGen.create(leftNode);
+        final WasmExpressionNode leftUnboxed = WasmUnboxNodeGen.create(leftNode); // TODO why do these need to be unboxed/final???
         final WasmExpressionNode rightUnboxed = WasmUnboxNodeGen.create(rightNode);
 
         final WasmExpressionNode result;
@@ -406,7 +378,7 @@ public class WasmNodeFactory {
         }
 
         int start = leftNode.getSourceCharIndex();
-        int length = rightNode.getSourceEndIndex() - start;
+        int length = rightNode.getSourceEndIndex() - start; // TODO len should use binop
         result.setSourceSection(start, length);
         result.addExpressionTag();
 

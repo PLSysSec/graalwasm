@@ -50,6 +50,7 @@ grammar WasmLanguage;
 // DO NOT MODIFY - generated from WasmLanguage.g4 using "mx create-wasm-parser"
 
 import java.util.ArrayList;
+import java.util.Stack;
 import java.util.List;
 import java.util.Map;
 
@@ -209,40 +210,43 @@ bind_var
 
 /* Instructions & Expressions */
 
-instr returns [WasmStatementNode result]
-  : plain_instr                                 { $result = $plain_instr.result; }
-//  | call_instr_instr                            //{ $result = $CII.result; }
-//  | block_instr                                 //{ $result = $block_instr.result; }
-//  | expr                                        { $result = $expr.result; }
+instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
+  : plain_instr[body]                                 { $result = $plain_instr.result; }
+  //| call_instr_instr                            //{ $result = $call_instr_instr.result; }
+  //| block_instr                                 //{ $result = $block_instr.result; }
+  | expr[body]                                        { $result = $expr.result; }
   ;
 
-plain_instr returns [WasmStatementNode result]
-  : UNREACHABLE                                 //{ $result = factory.createUnreachable(); }
+plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
+  : UNREACHABLE                                 { $result = factory.createUnreachable($UNREACHABLE); }
   | NOP                                         { $result = factory.createNop($NOP); }
   | DROP                                        { $result = factory.createDrop($DROP); }
-  | SELECT
-  | BR var
-  | BR_IF var
-  | BR_TABLE var+
-  | RETURN
-  | CALL var
-  | LOCAL_GET var
-  | LOCAL_SET var
-  | LOCAL_TEE var
-  | GLOBAL_GET var
-  | GLOBAL_SET var
-  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?
-  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?
-  | MEMORY_SIZE
-  | MEMORY_GROW
+  | SELECT                                      { $result = factory.createSelect($SELECT); }
+  | BR var                                      //{ $result = factory.createBranch(); }
+  | BR_IF var                                   //{ $result = factory.createBranchIf(); }
+  | BR_TABLE var+                               //{ $result = factory.createBranchTable(); }
+  | RETURN                                      { $result = factory.createReturn($RETURN, null); }
+  | CALL var                                    //{ $result = factory.createCall(); }
+  | LOCAL_GET var                               //{ $result = factory.createLocalGet(); }
+  | LOCAL_SET var                               //{ $result = factory.createLocalSet(); }
+  | LOCAL_TEE var                               //{ $result = factory.createLocalTee(); }
+  | GLOBAL_GET var                              //{ $result = factory.createGlobalGet(); }
+  | GLOBAL_SET var                              //{ $result = factory.createGlobalSet(); }
+  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?           //{ $result = factory.createLoad(); }
+  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?          //{ $result = factory.createStore(); }
+  | MEMORY_SIZE                                 //{ $result = factory.createMemory(); }
+  | MEMORY_GROW                                 //{ $result = factory.createGrowMemory(); }
   | CONST NAT                                   { $result = factory.createNumericLiteral($NAT); }
-  //| CONST literal                             { $result = factory.createNumericLiteral($literal); }
-  | TEST
-  | COMPARE
-  | UNARY
-  | BINARY
-  | CONVERT
+  //| CONST literal                               { $result = factory.createNumericLiteral($literal); }
+  | TEST                                        //{ $result = factory.createTest(); }
+  | COMPARE                                     //{ $result = factory.createCompare(); }
+  | UNARY                                       //{ $result = factory.createUnary($UNARY); }
+  | BINARY                                      { WasmStatementNode arg1 = body.pop();
+                                                  WasmStatementNode arg2 = body.pop();
+                                                  $result = factory.createBinary($BINARY, (WasmExpressionNode) arg1, (WasmExpressionNode) arg2); } // TODO where could this casting fail?
+  | CONVERT                                     //{ $result = factory.createConvert(); }
   ;
+
 /*
 call_instr
   : CALL_INDIRECT type_use? call_instr_params
@@ -266,7 +270,7 @@ call_instr_results_instr
 
 block_instr
   : (BLOCK | LOOP) bind_var? block END bind_var?
-  | IF bind_var? block (ELSE bind_var? instr_list)? END bind_var?
+  | IF bind_var? block (ELSE bind_var? instr_list[null])? END bind_var?
   ;
 
 block_type
@@ -274,21 +278,22 @@ block_type
   ;
 
 block
-  : block_type? instr_list
+  : block_type? instr_list[null]
+  ;
+*/
+expr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
+  : LPAR expr1[body] RPAR                             { $result = $expr1.result; }
   ;
 
-expr returns [WasmStatementNode result]
-  : LPAR expr1 RPAR                             { $result = $expr1.result; }
+expr1 [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
+  : plain_instr[body]
+    (expr[body])* //TODO might need to update body before passing it to future expressions
+  //| CALL_INDIRECT call_expr_type
+  //| BLOCK bind_var? block
+  //| LOOP bind_var? block
+  //| IF bind_var? if_block
   ;
-
-expr1 returns [WasmStatementNode result]
-  : plain_instr expr*                           { $result = $plain_instr.result; }
-  | CALL_INDIRECT call_expr_type
-  | BLOCK bind_var? block
-  | LOOP bind_var? block
-  | IF bind_var? if_block
-  ;
-
+/*
 call_expr_type
   : type_use? call_expr_params
   ;
@@ -303,22 +308,22 @@ call_expr_results
 
 if_block
   : block_type if_block
-  | expr* LPAR THEN instr_list RPAR (LPAR ELSE instr_list RPAR)?
+  | expr* LPAR THEN instr_list[null] RPAR (LPAR ELSE instr_list[null] RPAR)?
   ;
 */
-instr_list [List<WasmStatementNode> body] returns [List<WasmStatementNode> result]
+instr_list [Stack<WasmStatementNode> body] returns [Stack<WasmStatementNode> result]
   :
     (
-    instr                                       { body.add($instr.result); }
+    instr[body]                                 { body.push($instr.result); }
     )*
-//    call_instr?                                 { body.add($call_instr.result); }
+    //call_instr?                                 { body.push($call_instr.result); }
                                                 { $result = body; }
   ;
-/*
+
 const_expr
-  : instr_list
+  : instr_list[null]
   ;
-*/
+
 /* Functions */
 
 func
@@ -332,10 +337,10 @@ func_fields returns [WasmStatementNode result]
   // TODO create new block here?? + body List?
   // TODO finishBlock will flatten => WasmStatementNode
   // TODO trying to resolve BLOCK CREATION with PARENS: I NEED PARENSSS EITHER THAT OR NO NEW BLOCK/SCOPE
-//  | inline_import type_use? func_fields_import
-//  | inline_export func_fields
+  | inline_import type_use? func_fields_import
+  | inline_export func_fields
   ;
-/*
+
 func_fields_import
   : (LPAR PARAM value_type* RPAR | LPAR PARAM bind_var value_type RPAR) func_fields_import_result
   ;
@@ -343,7 +348,7 @@ func_fields_import
 func_fields_import_result
   : (LPAR RESULT value_type* RPAR)*
   ;
-*/
+
 func_fields_body returns [WasmStatementNode result]
   : (
     LPAR PARAM value_type* RPAR
@@ -358,21 +363,22 @@ func_result_body returns [WasmStatementNode result]
 
 func_body returns [WasmStatementNode result]
   :                                             { factory.startBlock();
-                                                  List<WasmStatementNode> body = new ArrayList<>(); }
+                                                  Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
+                                                  //List<WasmStatementNode> body = new ArrayList<>(); }
     (
     LPAR LOCAL value_type* RPAR                 // TODO add to body
     | LPAR LOCAL bind_var value_type RPAR       // TODO add to body
     )*
     s=LPAR
     res=instr_list[body]
-    e=RPAR                                      { $result = factory.finishBlock($res.result, $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
+    e=RPAR                                      { $result = factory.finishBlock(new ArrayList($res.result), $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
   ;
 
 /* Tables, Memories & Globals */
-/*
+
 offset
   : LPAR OFFSET const_expr RPAR
-  | expr
+  //| expr
   ;
 
 elem
@@ -414,9 +420,9 @@ global_fields
   | inline_import global_type
   | inline_export global_fields
   ;
-*/
+
 /* Imports & Exports */
-/*
+
 import_desc
   : LPAR FUNC bind_var? type_use RPAR
   | LPAR FUNC bind_var? func_type RPAR
@@ -447,9 +453,9 @@ export
 inline_export
   : LPAR EXPORT name RPAR
   ;
-*/
+
 /* Modules */
-/*
+
 type_
   : def_type
   ;
@@ -461,18 +467,18 @@ type_def
 start
   : LPAR START var RPAR
   ;
-*/
+
 module_field
-  : /*type_def
+  : type_def
   | sglobal
   | table
   | memory
-  | */func/*
+  | func
   | elem
   | data
   | start
   | simport
-  | export*/
+  | export
   ;
 
 module_
@@ -480,7 +486,7 @@ module_
   ;
 
 /* Scripts */
-/*
+
 script_module
   : module_
   | LPAR MODULE VAR? (BIN | QUOTE) STRING* RPAR
@@ -530,7 +536,7 @@ script
   : cmd* EOF
   | module_field+ EOF
   ;
-*/
+
 module
   : module_ EOF
   | module_field* EOF
