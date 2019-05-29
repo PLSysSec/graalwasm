@@ -61,7 +61,7 @@ import com.oracle.truffle.wasm.runtime.WasmNull;
  * Note that we do not need the analogous {@code !=} operator, because we can just
  * {@link WasmLogicalNotNode negate} the {@code ==} operator.
  */
-@NodeInfo(shortName = "==")
+@NodeInfo(shortName = "eq")
 public abstract class WasmEqualNode extends WasmBinaryNode {
 
     @Specialization

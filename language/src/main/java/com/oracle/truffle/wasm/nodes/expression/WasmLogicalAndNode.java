@@ -46,7 +46,7 @@ import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 /**
  * Logical conjunction node with short circuit evaluation.
  */
-@NodeInfo(shortName = "&&")
+@NodeInfo(shortName = "and")
 public final class WasmLogicalAndNode extends WasmShortCircuitNode {
 
     public WasmLogicalAndNode(WasmExpressionNode left, WasmExpressionNode right) {

@@ -222,29 +222,27 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | NOP                                         { $result = factory.createNop($NOP); }
   | DROP                                        { $result = factory.createDrop($DROP); }
   | SELECT                                      { $result = factory.createSelect($SELECT); }
-  | BR var                                      //{ $result = factory.createBranch(); }
-  | BR_IF var                                   //{ $result = factory.createBranchIf(); }
-  | BR_TABLE var+                               //{ $result = factory.createBranchTable(); }
+  | BR var                                      //{ $result = factory.createBranch($BR, var); }
+  | BR_IF var                                   //{ $result = factory.createBranch($BR_IF, var); } TODO what does this look like in stack notation?
+  | BR_TABLE var+                               //{ $result = factory.createBranch($BR_TABLE, var); } TODO how to handle 'var+' ?
   | RETURN                                      { $result = factory.createReturn($RETURN, null); }
-  | CALL var                                    //{ $result = factory.createCall(); }
-  | LOCAL_GET var                               //{ $result = factory.createLocalGet(); }
-  | LOCAL_SET var                               //{ $result = factory.createLocalSet(); }
-  | LOCAL_TEE var                               //{ $result = factory.createLocalTee(); }
-  | GLOBAL_GET var                              //{ $result = factory.createGlobalGet(); }
-  | GLOBAL_SET var                              //{ $result = factory.createGlobalSet(); }
-  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?           //{ $result = factory.createLoad(); }
-  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?          //{ $result = factory.createStore(); }
-  | MEMORY_SIZE                                 //{ $result = factory.createMemory(); }
-  | MEMORY_GROW                                 //{ $result = factory.createGrowMemory(); }
+  | CALL var                                    //{ $result = factory.createCall($CALL, var); } // TODO may be split between local/global
+  | LOCAL_GET var                               //{ $result = factory.createGet($LOCAL_GET, var); }
+  | LOCAL_SET var                               //{ $result = factory.createSet($LOCAL_SET, var); }
+  | LOCAL_TEE var                               //{ $result = factory.createTee($LOCAL_TEE, var); }
+  | GLOBAL_GET var                              //{ $result = factory.createGet($GLOBAL_GET, var); }
+  | GLOBAL_SET var                              //{ $result = factory.createSet($GLOBAL_SET, var); }
+  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?           //{ $result = factory.createLoad($LOAD, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
+  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?          //{ $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
+  | MEMORY_SIZE                                 //{ $result = factory.createMemorySize($MEMORY_SIZE); }
+  | MEMORY_GROW                                 //{ $result = factory.createMemoryGrow($MEMORY_GROW); }
   | CONST NAT                                   { $result = factory.createNumericLiteral($NAT); }
   //| CONST literal                               { $result = factory.createNumericLiteral($literal); }
-  | TEST                                        //{ $result = factory.createTest(); }
-  | COMPARE                                     //{ $result = factory.createCompare(); }
-  | UNARY                                       //{ $result = factory.createUnary($UNARY); }
-  | BINARY                                      { WasmStatementNode arg1 = body.pop();
-                                                  WasmStatementNode arg2 = body.pop();
-                                                  $result = factory.createBinary($BINARY, (WasmExpressionNode) arg1, (WasmExpressionNode) arg2); } // TODO where could this casting fail?
-  | CONVERT                                     //{ $result = factory.createConvert(); }
+  | TEST                                        //{ $result = factory.createTest($TEST, (WasmExpressionNode) body.pop()); }
+  | COMPARE                                     { $result = factory.createCompare($COMPARE, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
+  | UNARY                                       //{ $result = factory.createUnary($UNARY, (WasmExpressionNode) body.pop()); }
+  | BINARY                                      { $result = factory.createBinary($BINARY, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); } // TODO where could this casting fail? and what kind of error would it be?
+  | CONVERT                                     //{ $result = factory.createConvert($CONVERT, (WasmExpressionNode) body.pop()); }
   ;
 
 /*

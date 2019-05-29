@@ -52,7 +52,7 @@ import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
  * information on specializations.
  */
 @NodeChild("valueNode")
-@NodeInfo(shortName = "!")
+@NodeInfo(shortName = "not")
 public abstract class WasmLogicalNotNode extends WasmExpressionNode {
 
     @Specialization

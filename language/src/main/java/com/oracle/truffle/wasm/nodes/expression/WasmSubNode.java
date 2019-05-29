@@ -51,7 +51,7 @@ import com.oracle.truffle.wasm.runtime.WasmBigNumber;
 /**
  * This class is similar to the extensively documented {@link WasmAddNode}.
  */
-@NodeInfo(shortName = "-")
+@NodeInfo(shortName = "sub")
 public abstract class WasmSubNode extends WasmBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)

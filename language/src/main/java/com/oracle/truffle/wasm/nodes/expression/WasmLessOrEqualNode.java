@@ -52,7 +52,7 @@ import com.oracle.truffle.wasm.runtime.WasmBigNumber;
  * This class is similar to the {@link WasmLessThanNode}.
  */
 @NodeInfo(shortName = "<=")
-public abstract class WasmLessOrEqualNode extends WasmBinaryNode {
+public abstract class WasmLessOrEqualNode extends WasmBinaryNode { // TODO currently signed or unsigned?
 
     @Specialization
     protected boolean lessOrEqual(long left, long right) {

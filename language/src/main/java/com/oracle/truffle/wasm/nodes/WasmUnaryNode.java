@@ -38,44 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.wasm.nodes.expression;
+package com.oracle.truffle.wasm.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.wasm.WasmException;
-import com.oracle.truffle.wasm.nodes.WasmBinaryNode;
-import com.oracle.truffle.wasm.runtime.WasmBigNumber;
+import com.oracle.truffle.api.dsl.NodeChild;
 
 /**
- * This class is similar to the extensively documented {@link WasmAddNode}. Divisions by 0 throw the
- * same {@link ArithmeticException exception} as in Java, Wasm has no special handling for it to keep
- * the code simple.
+ * Utility base class for operations that take two arguments (per convention called "left" and
+ * "right"). For concrete subclasses of this class, the Truffle DSL creates two child fields, and
+ * the necessary constructors and logic to set them.
  */
-@NodeInfo(shortName = "div")
-public abstract class WasmDivNode extends WasmBinaryNode {
-
-    @Specialization(rewriteOn = ArithmeticException.class)
-    protected long div(long left, long right) throws ArithmeticException {
-        long result = left / right;
-        /*
-         * The division overflows if left is Long.MIN_VALUE and right is -1.
-         */
-        if ((left & right & result) < 0) {
-            throw new ArithmeticException("long overflow");
-        }
-        return result;
-    }
-
-    @Specialization
-    @TruffleBoundary
-    protected WasmBigNumber div(WasmBigNumber left, WasmBigNumber right) {
-        return new WasmBigNumber(left.getValue().divide(right.getValue()));
-    }
-
-    @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw WasmException.typeError(this, left, right);
-    }
+@NodeChild("node")
+public abstract class WasmUnaryNode extends WasmExpressionNode {
 }

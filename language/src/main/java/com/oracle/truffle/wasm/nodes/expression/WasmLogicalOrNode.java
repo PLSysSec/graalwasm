@@ -46,7 +46,7 @@ import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 /**
  * Logical disjunction node with short circuit evaluation.
  */
-@NodeInfo(shortName = "||")
+@NodeInfo(shortName = "or")
 public final class WasmLogicalOrNode extends WasmShortCircuitNode {
 
     public WasmLogicalOrNode(WasmExpressionNode left, WasmExpressionNode right) {

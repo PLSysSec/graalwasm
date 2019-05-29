@@ -53,7 +53,7 @@ import com.oracle.truffle.wasm.runtime.WasmBigNumber;
  * specialized methods return {@code boolean} instead of the input types.
  */
 @NodeInfo(shortName = "<")
-public abstract class WasmLessThanNode extends WasmBinaryNode {
+public abstract class WasmLessThanNode extends WasmBinaryNode { // TODO currently signed or unsigned?
 
     @Specialization
     protected boolean lessThan(long left, long right) {
