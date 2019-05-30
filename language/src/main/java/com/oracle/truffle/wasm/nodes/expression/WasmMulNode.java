@@ -54,15 +54,14 @@ import com.oracle.truffle.wasm.runtime.WasmBigNumber;
 @NodeInfo(shortName = "mul")
 public abstract class WasmMulNode extends WasmBinaryNode {
 
-    @Specialization(rewriteOn = ArithmeticException.class)
-    protected long mul(long left, long right) {
-        return Math.multiplyExact(left, right);
+    @Specialization
+    protected int mul(int left, int right) {
+        return left * right;
     }
 
     @Specialization
-    @TruffleBoundary
-    protected WasmBigNumber mul(WasmBigNumber left, WasmBigNumber right) {
-        return new WasmBigNumber(left.getValue().multiply(right.getValue()));
+    protected long mul(long left, long right) {
+        return left * right;
     }
 
     @Fallback

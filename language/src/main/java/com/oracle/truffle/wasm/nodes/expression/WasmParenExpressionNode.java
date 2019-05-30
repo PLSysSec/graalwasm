@@ -66,12 +66,12 @@ public class WasmParenExpressionNode extends WasmExpressionNode {
     }
 
     @Override
-    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return expression.executeLong(frame);
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return expression.executeInt(frame);
     }
 
     @Override
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return expression.executeBoolean(frame);
+    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+        return expression.executeLong(frame);
     }
 }

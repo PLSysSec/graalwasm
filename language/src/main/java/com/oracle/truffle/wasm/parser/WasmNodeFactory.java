@@ -295,11 +295,11 @@ public class WasmNodeFactory {
         return selectNode;
     }
 
-    /*public WasmExpressionNode createTest(Token opToken, WasmExpressionNode node) {
+    public WasmExpressionNode createTest(Token opToken, WasmExpressionNode node) {
         if (node == null) {
             return null;
         }
-        final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node); // TODO why do these need to be unboxed/final???
+        final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node);
 
         final WasmExpressionNode result;
         switch (opToken.getText().substring(4)) {
@@ -311,18 +311,18 @@ public class WasmNodeFactory {
         }
 
         int start = node.getSourceCharIndex();
-        int length = opToken.getStopIndex() - start; // TODO test after add necessary classes for successful compilation
+        int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
 
         return result;
-    }*/
+    }
 
     public WasmExpressionNode createCompare(Token opToken, WasmExpressionNode rightNode, WasmExpressionNode leftNode) {
         if (leftNode == null || rightNode == null) {
             return null;
         }
-        final WasmExpressionNode leftUnboxed = WasmUnboxNodeGen.create(leftNode); // TODO why do these need to be unboxed/final???
+        final WasmExpressionNode leftUnboxed = WasmUnboxNodeGen.create(leftNode);
         final WasmExpressionNode rightUnboxed = WasmUnboxNodeGen.create(rightNode);
 
         final WasmExpressionNode result;
@@ -333,40 +333,48 @@ public class WasmNodeFactory {
             case "ne":
                 result = WasmLogicalNotNodeGen.create(WasmEqualNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
-            case "lt_s": // TODO double check T/F logic for all of below
-            case "lt":
-                result = WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed);//, true);
+            case "lt_s":
+                result = WasmLessThanSignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "lt_u":
-                result = WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed);//, false);
+                result = WasmLessThanUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
+            /*case "lt":
+                result = WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed);
+                break;*/
             case "le_s":
-            case "le":
-                result = WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed);//, true);
+                result = WasmLessOrEqualSignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "le_u":
-                result = WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed);//, false);
+                result = WasmLessOrEqualUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
+            /*case "le":
+                result = WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed);
+                break;*/
             case "gt_s":
-            case "gt":
-                result = WasmLogicalNotNodeGen.create(WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed));//, true));
+                result = WasmLogicalNotNodeGen.create(WasmLessOrEqualSignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case "gt_u":
-                result = WasmLogicalNotNodeGen.create(WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed));//, false));
+                result = WasmLogicalNotNodeGen.create(WasmLessOrEqualUnsignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
+            /*case "gt":
+                result = WasmLogicalNotNodeGen.create(WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed));
+                break;*/
             case "ge_s":
-            case "ge":
-                result = WasmLogicalNotNodeGen.create(WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed));//, true));
+                result = WasmLogicalNotNodeGen.create(WasmLessThanSignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case "ge_u":
-                result = WasmLogicalNotNodeGen.create(WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed));//, false));
+                result = WasmLogicalNotNodeGen.create(WasmLessThanUnsignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
+            /*case "ge":
+                result = WasmLogicalNotNodeGen.create(WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed));
+                break;*/
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
 
         int start = leftNode.getSourceCharIndex();
-        int length = rightNode.getSourceEndIndex() - start; // FIXME len should use binop
+        int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
 
@@ -416,7 +424,7 @@ public class WasmNodeFactory {
         }
 
         int start = node.getSourceCharIndex();
-        int length = opToken.getStopIndex() - start; // TODO test after add necessary classes for successful compilation
+        int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
 
@@ -437,7 +445,7 @@ public class WasmNodeFactory {
         if (leftNode == null || rightNode == null) {
             return null;
         }
-        final WasmExpressionNode leftUnboxed = WasmUnboxNodeGen.create(leftNode); // TODO why do these need to be unboxed/final???
+        final WasmExpressionNode leftUnboxed = WasmUnboxNodeGen.create(leftNode);
         final WasmExpressionNode rightUnboxed = WasmUnboxNodeGen.create(rightNode);
 
         final WasmExpressionNode result;
@@ -445,27 +453,26 @@ public class WasmNodeFactory {
             case "add":
                 result = WasmAddNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
-            /*case "mul":
+            case "mul":
                 result = WasmMulNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "div_s":
-            case "div":
-                result = WasmDivNodeGen.create(leftUnboxed, rightUnboxed);//, true);
+                result = WasmDivSignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "div_u":
-                result = WasmDivNodeGen.create(leftUnboxed, rightUnboxed);//, false);
+                result = WasmDivUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
+            /*case "div":
+                result = WasmDivNodeGen.create(leftUnboxed, rightUnboxed);
+                break;*/
             case "sub":
                 result = WasmSubNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "rem_s":
-                result = WasmRemNodeGen.create(leftUnboxed, rightUnboxed);//, true); // TODO use div
+                result = WasmRemSignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "rem_u":
-                result = WasmRemNodeGen.create(leftUnboxed, rightUnboxed);//, false); // TODO use div
-                break;
-            case "xor":
-                result = WasmLogicalNotNodeGen.create(new WasmLogicalOrNode(leftUnboxed, rightUnboxed)); // FIXME double check logic
+                result = WasmRemUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "and":
                 result = new WasmLogicalAndNode(leftUnboxed, rightUnboxed);
@@ -473,14 +480,17 @@ public class WasmNodeFactory {
             case "or":
                 result = new WasmLogicalOrNode(leftUnboxed, rightUnboxed);
                 break;
+            case "xor":
+                result = new WasmLogicalOrNode(new WasmLogicalAndNode(leftUnboxed, WasmLogicalNotNodeGen.create(rightUnboxed)), new WasmLogicalAndNode(WasmLogicalNotNodeGen.create(leftUnboxed), rightUnboxed));
+                break;
             case "shl":
                 result = WasmShiftLeftNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "shr_s":
-                result = WasmShiftRightNodeGen.create(leftUnboxed, rightUnboxed);//, true);
+                result = WasmShiftRightSignedNodeGen.create(leftUnboxed, rightUnboxed);//, true);
                 break;
             case "shr_u":
-                result = WasmShiftRightNodeGen.create(leftUnboxed, rightUnboxed);//, false);
+                result = WasmShiftRightUnsignedNodeGen.create(leftUnboxed, rightUnboxed);//, false);
                 break;
             case "rotl":
                 result = WasmRotateLeftNodeGen.create(leftUnboxed, rightUnboxed);
@@ -492,9 +502,9 @@ public class WasmNodeFactory {
                 result = WasmMinNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "max":
-                result = WasmLogicalNotNodeGen.create(WasmMinNodeGen.create(leftUnboxed, rightUnboxed));
+                result = WasmMaxNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
-            case "copysign":
+            /*case "copysign":
                 result = WasmCopySignNodeGen.create(leftUnboxed, rightUnboxed);
                 break;*/
             default:
@@ -502,8 +512,8 @@ public class WasmNodeFactory {
         }
 
         int start = leftNode.getSourceCharIndex();
-        //int length = rightNode.getSourceEndIndex() - start; // FIXME len should use binop
-        int length = opToken.getStopIndex() - start; // TODO test after add necessary classes for successful compilation
+        //int length = rightNode.getSourceEndIndex() - start;
+        int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
 
@@ -514,7 +524,7 @@ public class WasmNodeFactory {
         if (node == null) {
             return null;
         }
-        final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node); // TODO why do these need to be unboxed/final???
+        final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node);
 
         final WasmExpressionNode result;
         switch (opToken.getText().substring(4)) { // TODO one substring may need to be between '.' and '_', others signed v unsigned => does truffle automatically handle i32 v i64 (etc)? => will encounter during impl
@@ -544,7 +554,7 @@ public class WasmNodeFactory {
         }
 
         int start = node.getSourceCharIndex();
-        int length = opToken.getStopIndex() - start; // TODO test after add necessary classes for successful compilation
+        int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
 
@@ -667,10 +677,10 @@ public class WasmNodeFactory {
         WasmExpressionNode result;
         try {
             /* Try if the literal is small enough to fit into a long value. */
-            result = new WasmLongLiteralNode(Long.parseLong(literalToken.getText()));
+            result = new WasmIntegerLiteralNode(Integer.parseInt(literalToken.getText()));
         } catch (NumberFormatException ex) {
             /* Overflow of long value, so fall back to BigInteger. */
-            result = new WasmBigIntegerLiteralNode(new BigInteger(literalToken.getText()));
+            result = new WasmLongLiteralNode(Long.parseLong(literalToken.getText()));
         }
         srcFromToken(result, literalToken);
         result.addExpressionTag();

@@ -9,21 +9,21 @@ import com.oracle.truffle.wasm.nodes.WasmBinaryNode;
 import java.lang.Integer;
 import java.lang.Long;
 
-@NodeInfo(shortName = "rotr")
-public abstract class WasmRotateRightNode extends WasmBinaryNode {
+@NodeInfo(shortName = "max")
+public abstract class WasmMaxNode extends WasmBinaryNode {
 
     @Specialization
-    protected int rotr(int num, int amt) {
-        return Integer.rotateRight(num, amt);
+    protected int max(int left, int right) {
+        return Integer.max(left, right);
     }
 
     @Specialization
-    protected long rotr(long num, int amt) {
-        return Long.rotateRight(num, amt);
+    protected long max(long left, long right) {
+        return Long.max(left, right);
     }
 
     @Fallback
-    protected Object typeError(Object num, Object amt) {
-        throw WasmException.typeError(this, num, amt);
+    protected Object typeError(Object left, Object right) {
+        throw WasmException.typeError(this, left, right);
     }
 }

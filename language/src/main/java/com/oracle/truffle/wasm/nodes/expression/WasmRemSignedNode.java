@@ -40,28 +40,40 @@
  */
 package com.oracle.truffle.wasm.nodes.expression;
 
-import java.math.BigInteger;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
-import com.oracle.truffle.wasm.runtime.WasmBigNumber;
+import com.oracle.truffle.wasm.WasmException;
+import com.oracle.truffle.wasm.nodes.WasmBinaryNode;
 
 /**
- * Constant literal for a arbitrary-precision number that exceeds the range of
- * {@link WasmLongLiteralNode}.
+ * This class is similar to the extensively documented {@link WasmAddNode}. Divisions by 0 throw the
+ * same {@link ArithmeticException exception} as in Java, Wasm has no special handling for it to keep
+ * the code simple.
  */
-@NodeInfo(shortName = "const")
-public final class WasmBigIntegerLiteralNode extends WasmExpressionNode {
+@NodeInfo(shortName = "rem_s")
+public abstract class WasmRemSignedNode extends WasmBinaryNode {
 
-    private final WasmBigNumber value;
-
-    public WasmBigIntegerLiteralNode(BigInteger value) {
-        this.value = new WasmBigNumber(value);
+    @Specialization
+    protected int rem_s(int left, int right) {
+        if (right == 0) {
+            return 0; // FIXME undefined
+        }
+        int result = left % right;
+        return result;
     }
 
-    @Override
-    public WasmBigNumber executeGeneric(VirtualFrame frame) {
-        return value;
+    @Specialization
+    protected long rem_s(long left, long right) {
+        if (right == 0) {
+            return 0; // FIXME undefined
+        }
+        long result = left % right;
+        return result;
+    }
+
+    @Fallback
+    protected Object typeError(Object left, Object right) {
+        throw WasmException.typeError(this, left, right);
     }
 }

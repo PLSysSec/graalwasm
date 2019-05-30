@@ -6,20 +6,19 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.wasm.WasmException;
 import com.oracle.truffle.wasm.nodes.WasmBinaryNode;
 
-import java.lang.Integer;
-import java.lang.Long;
-
-@NodeInfo(shortName = "rotr")
-public abstract class WasmRotateRightNode extends WasmBinaryNode {
+@NodeInfo(shortName = "shr_u")
+public abstract class WasmShiftRightUnsignedNode extends WasmBinaryNode {
 
     @Specialization
-    protected int rotr(int num, int amt) {
-        return Integer.rotateRight(num, amt);
+    protected int shr_u(int num, int amt) {
+        int k = amt % 32;
+        return num >>> k;
     }
 
     @Specialization
-    protected long rotr(long num, int amt) {
-        return Long.rotateRight(num, amt);
+    protected long shr_u(long num, long amt) {
+        long k = amt % 64;
+        return num >>> k;
     }
 
     @Fallback

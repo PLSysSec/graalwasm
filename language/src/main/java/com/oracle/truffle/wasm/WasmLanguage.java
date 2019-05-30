@@ -83,7 +83,6 @@ import com.oracle.truffle.wasm.nodes.controlflow.WasmIfNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmReturnNode;
 import com.oracle.truffle.wasm.nodes.controlflow.WasmWhileNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmAddNode;
-import com.oracle.truffle.wasm.nodes.expression.WasmBigIntegerLiteralNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmDivNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmEqualNode;
 import com.oracle.truffle.wasm.nodes.expression.WasmFunctionLiteralNode;

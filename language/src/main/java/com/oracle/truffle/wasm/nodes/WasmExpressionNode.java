@@ -102,11 +102,23 @@ public abstract class WasmExpressionNode extends WasmStatementNode {
      * subclasses overwrite the appropriate methods.
      */
 
+    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return WasmTypesGen.expectBoolean(executeGeneric(frame));
+    }
+
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return WasmTypesGen.expectInteger(executeGeneric(frame));
+    }
+
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return WasmTypesGen.expectLong(executeGeneric(frame));
     }
 
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return WasmTypesGen.expectBoolean(executeGeneric(frame));
+    /*public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
+        return WasmTypesGen.expectFloat(executeGeneric(frame));
     }
+
+    public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return WasmTypesGen.expectDouble(executeGeneric(frame));
+    }*/
 }

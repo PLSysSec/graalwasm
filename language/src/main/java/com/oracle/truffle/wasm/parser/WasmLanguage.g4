@@ -236,9 +236,8 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?          //{ $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
   | MEMORY_SIZE                                 //{ $result = factory.createMemorySize($MEMORY_SIZE); }
   | MEMORY_GROW                                 //{ $result = factory.createMemoryGrow($MEMORY_GROW); }
-  | CONST NAT                                   { $result = factory.createNumericLiteral($NAT); }
-  //| CONST literal                               { $result = factory.createNumericLiteral($literal); }
-  | TEST                                        //{ $result = factory.createTest($TEST, (WasmExpressionNode) body.pop()); }
+  | CONST literal                               { $result = factory.createNumericLiteral($literal.start); }
+  | TEST                                        { $result = factory.createTest($TEST, (WasmExpressionNode) body.pop()); }
   | COMPARE                                     { $result = factory.createCompare($COMPARE, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
   | UNARY                                       //{ $result = factory.createUnary($UNARY, (WasmExpressionNode) body.pop()); }
   | BINARY                                      { $result = factory.createBinary($BINARY, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); } // TODO where could this casting fail? and what kind of error would it be?
@@ -325,7 +324,7 @@ const_expr
 /* Functions */
 
 func
-  : LPAR FUNC VAR?                              { factory.startFunction($VAR, $LPAR); }
+  : LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); } // TODO nullptr if no bind_var => how to handle? even if main exists, fails on any other fxn without a name
     func_fields                                 { factory.finishFunction($func_fields.result); }
     RPAR
   ;

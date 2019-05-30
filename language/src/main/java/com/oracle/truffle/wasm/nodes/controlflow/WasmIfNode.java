@@ -103,7 +103,7 @@ public final class WasmIfNode extends WasmStatementNode {
              * The condition must evaluate to a boolean value, so we call the boolean-specialized
              * execute method.
              */
-            return conditionNode.executeBoolean(frame);
+            return conditionNode.executeBoolean(frame); // TODO do I need a boolean type?
         } catch (UnexpectedResultException ex) {
             /*
              * The condition evaluated to a non-boolean result. This is a type error in the Wasm

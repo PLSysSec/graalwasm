@@ -38,53 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.wasm.builtins;
+package com.oracle.truffle.wasm.nodes.expression;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.wasm.WasmException;
 import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
-import com.oracle.truffle.wasm.runtime.WasmContext;
-import com.oracle.truffle.wasm.runtime.WasmFunctionRegistry;
 
 /**
- * Base class for all builtin functions. It contains the Truffle DSL annotation {@link NodeChild}
- * that defines the function arguments.<br>
- * The builtin functions are registered in {@link WasmContext#installBuiltins}. Every builtin node
- * subclass is instantiated there, wrapped into a function, and added to the
- * {@link WasmFunctionRegistry}. This ensures that builtin functions can be called like user-defined
- * functions; there is no special function lookup or call node for builtin functions.
+ * Constant literal for a primitive {@code long} value. The unboxed value can be returned when the
+ * parent expects a long value and calls {@link WasmLongLiteralNode#executeLong}. In the generic case,
+ * the primitive value is automatically boxed by Java.
  */
-@NodeChild(value = "arguments", type = WasmExpressionNode[].class)
-@GenerateNodeFactory
-public abstract class WasmBuiltinNode extends WasmExpressionNode {
+@NodeInfo(shortName = "const")
+public final class WasmIntegerLiteralNode extends WasmExpressionNode {
 
-    @Override
-    public final Object executeGeneric(VirtualFrame frame) {
-        try {
-            return execute(frame);
-        } catch (UnsupportedSpecializationException e) {
-            throw WasmException.typeError(e.getNode(), e.getSuppliedValues());
-        }
+    private final int value;
+
+    public WasmIntegerLiteralNode(int value) {
+        this.value = value;
     }
 
     @Override
-    public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeInt(frame);
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return value;
     }
 
     @Override
-    public final long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeLong(frame);
+    public Object executeGeneric(VirtualFrame frame) {
+        return value;
     }
-
-    @Override
-    public final void executeVoid(VirtualFrame frame) {
-        super.executeVoid(frame);
-    }
-
-    protected abstract Object execute(VirtualFrame frame);
 }

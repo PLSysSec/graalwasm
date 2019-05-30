@@ -54,15 +54,14 @@ import com.oracle.truffle.wasm.runtime.WasmBigNumber;
 @NodeInfo(shortName = "sub")
 public abstract class WasmSubNode extends WasmBinaryNode {
 
-    @Specialization(rewriteOn = ArithmeticException.class)
-    protected long sub(long left, long right) {
-        return Math.subtractExact(left, right);
+    @Specialization
+    protected int sub(int left, int right) {
+        return left - right + (2 ^ 32);
     }
 
     @Specialization
-    @TruffleBoundary
-    protected WasmBigNumber sub(WasmBigNumber left, WasmBigNumber right) {
-        return new WasmBigNumber(left.getValue().subtract(right.getValue()));
+    protected long sub(long left, long right) {
+        return left - right + (2 ^ 64);
     }
 
     @Fallback

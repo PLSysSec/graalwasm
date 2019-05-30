@@ -38,53 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.wasm.builtins;
+package com.oracle.truffle.wasm.nodes.expression;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.wasm.WasmException;
-import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
-import com.oracle.truffle.wasm.runtime.WasmContext;
-import com.oracle.truffle.wasm.runtime.WasmFunctionRegistry;
+import com.oracle.truffle.wasm.nodes.WasmBinaryNode;
+
+import java.lang.Integer;
+import java.lang.Long;
 
 /**
- * Base class for all builtin functions. It contains the Truffle DSL annotation {@link NodeChild}
- * that defines the function arguments.<br>
- * The builtin functions are registered in {@link WasmContext#installBuiltins}. Every builtin node
- * subclass is instantiated there, wrapped into a function, and added to the
- * {@link WasmFunctionRegistry}. This ensures that builtin functions can be called like user-defined
- * functions; there is no special function lookup or call node for builtin functions.
+ * This class is similar to the extensively documented {@link WasmAddNode}. Divisions by 0 throw the
+ * same {@link ArithmeticException exception} as in Java, Wasm has no special handling for it to keep
+ * the code simple.
  */
-@NodeChild(value = "arguments", type = WasmExpressionNode[].class)
-@GenerateNodeFactory
-public abstract class WasmBuiltinNode extends WasmExpressionNode {
+@NodeInfo(shortName = "div_u")
+public abstract class WasmDivUnsignedNode extends WasmBinaryNode {
 
-    @Override
-    public final Object executeGeneric(VirtualFrame frame) {
-        try {
-            return execute(frame);
-        } catch (UnsupportedSpecializationException e) {
-            throw WasmException.typeError(e.getNode(), e.getSuppliedValues());
+    @Specialization
+    protected int div_u(int left, int right) {
+        if (right == 0) {
+            return 0; // FIXME undefined
         }
+        int result = Integer.divideUnsigned(left, right); // TODO correctly truncated?
+        return result;
     }
 
-    @Override
-    public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeInt(frame);
+    @Specialization
+    protected long div_u(long left, long right) {
+        if (right == 0) {
+            return 0; // FIXME undefined
+        }
+        long result = Long.divideUnsigned(left, right); // TODO correctly truncated?
+        return result;
     }
 
-    @Override
-    public final long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeLong(frame);
+    @Fallback
+    protected Object typeError(Object left, Object right) {
+        throw WasmException.typeError(this, left, right);
     }
-
-    @Override
-    public final void executeVoid(VirtualFrame frame) {
-        super.executeVoid(frame);
-    }
-
-    protected abstract Object execute(VirtualFrame frame);
 }

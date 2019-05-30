@@ -57,7 +57,7 @@ import com.oracle.truffle.wasm.runtime.WasmNull;
  * conversion methods for some types. In this class, we only cover types where the automatically
  * generated ones would not be sufficient.
  */
-@TypeSystem({long.class, boolean.class})
+@TypeSystem({boolean.class, int.class, long.class})//, float.class, double.class})
 public abstract class WasmTypes {
 
     /**
@@ -66,21 +66,21 @@ public abstract class WasmTypes {
      * {@code instanceof} check, because we know that there is only a {@link WasmNull#SINGLETON
      * singleton} instance.
      */
-    @TypeCheck(WasmNull.class)
+    /*@TypeCheck(WasmNull.class)
     public static boolean isWasmNull(Object value) {
         return value == WasmNull.SINGLETON;
-    }
+    }*/
 
     /**
      * Example of a manually specified type cast that replaces the automatically generated type cast
      * that the Truffle DSL would generate. For {@link WasmNull}, we do not need an actual cast,
      * because we know that there is only a {@link WasmNull#SINGLETON singleton} instance.
      */
-    @TypeCast(WasmNull.class)
+    /*@TypeCast(WasmNull.class)
     public static WasmNull asWasmNull(Object value) {
         assert isWasmNull(value);
         return WasmNull.SINGLETON;
-    }
+    }*/
 
     /**
      * Informs the Truffle DSL that a primitive {@code long} value can be used in all
@@ -89,9 +89,9 @@ public abstract class WasmTypes {
      * {@code long} is only used as a performance optimization to avoid the costly
      * {@link WasmBigNumber} arithmetic for values that fit into a 64-bit primitive value.
      */
-    @ImplicitCast
+    /*@ImplicitCast
     @TruffleBoundary
     public static WasmBigNumber castBigNumber(long value) {
         return new WasmBigNumber(BigInteger.valueOf(value));
-    }
+    }*/
 }

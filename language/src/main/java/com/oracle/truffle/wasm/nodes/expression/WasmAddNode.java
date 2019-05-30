@@ -63,6 +63,8 @@ import com.oracle.truffle.wasm.runtime.WasmBigNumber;
 @NodeInfo(shortName = "add")
 public abstract class WasmAddNode extends WasmBinaryNode {
 
+    @Specialization
+    protected int add(int left, int right) { return left + right; }
     /**
      * Specialization for primitive {@code long} values. This is the fast path of the
      * arbitrary-precision arithmetic. We need to check for overflows of the addition, and switch to
@@ -78,9 +80,9 @@ public abstract class WasmAddNode extends WasmBinaryNode {
      * This specialization is automatically selected by the Truffle DSL if both the left and right
      * operand are {@code long} values.
      */
-    @Specialization(rewriteOn = ArithmeticException.class)
+    @Specialization
     protected long add(long left, long right) {
-        return Math.addExact(left, right);
+        return left + right;
     }
 
     /**
@@ -95,11 +97,11 @@ public abstract class WasmAddNode extends WasmBinaryNode {
      * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
      * both input values are {@code long} values but the primitive addition overflows.
      */
-    @Specialization
+    /*@Specialization
     @TruffleBoundary
     protected WasmBigNumber add(WasmBigNumber left, WasmBigNumber right) {
         return new WasmBigNumber(left.getValue().add(right.getValue()));
-    }
+    }*/
 
     /**
      * Specialization for String concatenation. The Wasm specification says that String concatenation
@@ -109,19 +111,19 @@ public abstract class WasmAddNode extends WasmBinaryNode {
      * To implement these semantics, we tell the Truffle DSL to use a custom guard. The guard
      * function is defined in {@link #isString this class}, but could also be in any superclass.
      */
-    @Specialization(guards = "isString(left, right)")
+    /*@Specialization(guards = "isString(left, right)")
     @TruffleBoundary
     protected String add(Object left, Object right) {
         return left.toString() + right.toString();
-    }
+    }*/
 
     /**
      * Guard for String concatenation: returns true if either the left or the right operand is a
      * {@link String}.
      */
-    protected boolean isString(Object a, Object b) {
+    /*protected boolean isString(Object a, Object b) {
         return a instanceof String || b instanceof String;
-    }
+    }*/
 
     @Fallback
     protected Object typeError(Object left, Object right) {

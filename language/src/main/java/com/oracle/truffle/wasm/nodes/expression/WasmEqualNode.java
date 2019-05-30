@@ -65,40 +65,23 @@ import com.oracle.truffle.wasm.runtime.WasmNull;
 public abstract class WasmEqualNode extends WasmBinaryNode {
 
     @Specialization
+    protected boolean equal(int left, int right) {
+        return left == right;
+    } // TODO works?
+
+    @Specialization
     protected boolean equal(long left, long right) {
         return left == right;
     }
 
-    @Specialization
-    @TruffleBoundary
-    protected boolean equal(WasmBigNumber left, WasmBigNumber right) {
-        return left.equals(right);
-    }
-
-    @Specialization
-    protected boolean equal(boolean left, boolean right) {
-        return left == right;
-    }
-
-    @Specialization
-    protected boolean equal(String left, String right) {
-        return left.equals(right);
-    }
-
-    @Specialization
-    protected boolean equal(WasmFunction left, WasmFunction right) {
+    //@Specialization
+    //protected boolean equal(WasmFunction left, WasmFunction right) {
         /*
          * Our function registry maintains one canonical WasmFunction object per function name, so we
          * do not need equals().
          */
-        return left == right;
-    }
-
-    @Specialization
-    protected boolean equal(WasmNull left, WasmNull right) {
-        /* There is only the singleton instance of WasmNull, so we do not need equals(). */
-        return left == right;
-    }
+        //return left == right;
+    //}
 
     /**
      * Specialization for foreign {@link TruffleObject}s.
