@@ -114,11 +114,11 @@ public abstract class WasmExpressionNode extends WasmStatementNode {
         return WasmTypesGen.expectLong(executeGeneric(frame));
     }
 
-    /*public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
+    public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
         return WasmTypesGen.expectFloat(executeGeneric(frame));
     }
 
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
         return WasmTypesGen.expectDouble(executeGeneric(frame));
-    }*/
+    }
 }

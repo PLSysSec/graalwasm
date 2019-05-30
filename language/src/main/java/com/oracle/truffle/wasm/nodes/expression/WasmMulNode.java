@@ -64,6 +64,16 @@ public abstract class WasmMulNode extends WasmBinaryNode {
         return left * right;
     }
 
+    @Specialization
+    protected float mul(float left, float right) {
+        return left * right;
+    }
+
+    @Specialization
+    protected double mul(double left, double right) {
+        return left * right;
+    }
+
     @Fallback
     protected Object typeError(Object left, Object right) {
         throw WasmException.typeError(this, left, right);

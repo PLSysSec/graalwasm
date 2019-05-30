@@ -339,36 +339,36 @@ public class WasmNodeFactory {
             case "lt_u":
                 result = WasmLessThanUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
-            /*case "lt":
+            case "lt":
                 result = WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed);
-                break;*/
+                break;
             case "le_s":
                 result = WasmLessOrEqualSignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "le_u":
                 result = WasmLessOrEqualUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
-            /*case "le":
+            case "le":
                 result = WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed);
-                break;*/
+                break;
             case "gt_s":
                 result = WasmLogicalNotNodeGen.create(WasmLessOrEqualSignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case "gt_u":
                 result = WasmLogicalNotNodeGen.create(WasmLessOrEqualUnsignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
-            /*case "gt":
+            case "gt":
                 result = WasmLogicalNotNodeGen.create(WasmLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed));
-                break;*/
+                break;
             case "ge_s":
                 result = WasmLogicalNotNodeGen.create(WasmLessThanSignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case "ge_u":
                 result = WasmLogicalNotNodeGen.create(WasmLessThanUnsignedNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
-            /*case "ge":
+            case "ge":
                 result = WasmLogicalNotNodeGen.create(WasmLessThanNodeGen.create(leftUnboxed, rightUnboxed));
-                break;*/
+                break;
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
@@ -385,7 +385,7 @@ public class WasmNodeFactory {
         if (node == null) {
             return null;
         }
-        final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node); // TODO why do these need to be unboxed/final???
+        final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node);
 
         final WasmExpressionNode result;
         switch (opToken.getText().substring(4)) {
@@ -398,7 +398,7 @@ public class WasmNodeFactory {
             case "popcnt":
                 result = WasmPopCountNodeGen.create(nodeUnboxed);
                 break;
-            /*case "neg":
+            case "neg":
                 result = WasmNegNodeGen.create(nodeUnboxed);
                 break;
             case "abs":
@@ -418,7 +418,7 @@ public class WasmNodeFactory {
                 break;
             case "nearest":
                 result = WasmNearestNodeGen.create(nodeUnboxed);
-                break;*/
+                break;
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
@@ -462,9 +462,9 @@ public class WasmNodeFactory {
             case "div_u":
                 result = WasmDivUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
-            /*case "div":
+            case "div":
                 result = WasmDivNodeGen.create(leftUnboxed, rightUnboxed);
-                break;*/
+                break;
             case "sub":
                 result = WasmSubNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
@@ -502,17 +502,16 @@ public class WasmNodeFactory {
                 result = WasmMinNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "max":
-                result = WasmMaxNodeGen.create(leftUnboxed, rightUnboxed);
+                result = WasmLogicalNotNodeGen.create(WasmMinNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
-            /*case "copysign":
+            case "copysign":
                 result = WasmCopySignNodeGen.create(leftUnboxed, rightUnboxed);
-                break;*/
+                break;
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
 
         int start = leftNode.getSourceCharIndex();
-        //int length = rightNode.getSourceEndIndex() - start;
         int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
@@ -537,21 +536,56 @@ public class WasmNodeFactory {
             case "extend_i32_u":
                 result = WasmExtendUnsignedNodeGen.create(nodeUnboxed);
                 break;
-            /*case "demote_f64":
+            case "demote_f64":
                 result = WasmDemoteNodeGen.create(nodeUnboxed);
                 break;
-            case "promote":
+            case "promote_f32":
                 result = WasmPromoteNodeGen.create(nodeUnboxed);
                 break;
-            case "trunc":
-                result = WasmTruncNodeGen.create(nodeUnboxed);
+            case "trunc_f32_s":
+            case "trunc_f64_s":
+                if ((opToken.getText().substring(0, 3)).compareTo("i32") == 0) {
+                    result = WasmTruncSignedIntNodeGen.create(nodeUnboxed);
+                } else {
+                    result = WasmTruncSignedLongNodeGen.create(nodeUnboxed);
+                }
                 break;
-            case "convert":
-                result = WasmConvertNodeGen.create(nodeUnboxed);
+            case "trunc_f32_u":
+            case "trunc_f64_u":
+                if ((opToken.getText().substring(0, 3)).compareTo("i32") == 0) {
+                    result = WasmTruncUnsignedIntNodeGen.create(nodeUnboxed);
+                } else {
+                    result = WasmTruncUnsignedLongNodeGen.create(nodeUnboxed);
+                }
                 break;
-            case "reinterpret":
-                result = WasmReinterpretNodeGen.create(nodeUnboxed);
-                break;*/
+            case "convert_i32_s":
+            case "convert_i64_s":
+                if ((opToken.getText().substring(0, 3)).compareTo("f32") == 0) {
+                    result = WasmConvertSignedFloatNodeGen.create(nodeUnboxed);
+                } else {
+                    result = WasmConvertSignedDoubleNodeGen.create(nodeUnboxed);
+                }
+                break;
+            case "convert_i32_u":
+            case "convert_i64_u":
+                if ((opToken.getText().substring(0, 3)).compareTo("f32") == 0) {
+                    result = WasmConvertUnsignedFloatNodeGen.create(nodeUnboxed);
+                } else {
+                    result = WasmConvertUnsignedDoubleNodeGen.create(nodeUnboxed);
+                }
+                break;
+            case "reinterpret_i32":
+                result = WasmReinterpret32ITFNodeGen.create(nodeUnboxed);
+                break;
+            case "reinterpret_i64":
+                result = WasmReinterpret64ITFNodeGen.create(nodeUnboxed);
+                break;
+            case "reinterpret_f32":
+                result = WasmReinterpret32FTINodeGen.create(nodeUnboxed);
+                break;
+            case "reinterpret_f64":
+                result = WasmReinterpret64FTINodeGen.create(nodeUnboxed);
+                break;
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }

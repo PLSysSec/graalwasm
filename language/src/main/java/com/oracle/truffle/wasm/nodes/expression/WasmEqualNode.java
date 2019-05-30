@@ -67,21 +67,18 @@ public abstract class WasmEqualNode extends WasmBinaryNode {
     @Specialization
     protected boolean equal(int left, int right) {
         return left == right;
-    } // TODO works?
+    }
 
     @Specialization
     protected boolean equal(long left, long right) {
         return left == right;
     }
 
-    //@Specialization
-    //protected boolean equal(WasmFunction left, WasmFunction right) {
-        /*
-         * Our function registry maintains one canonical WasmFunction object per function name, so we
-         * do not need equals().
-         */
-        //return left == right;
-    //}
+    @Specialization
+    protected boolean equal(float left, float right) { return left == right; }
+
+    @Specialization
+    protected boolean equal(double left, double right) { return left == right; }
 
     /**
      * Specialization for foreign {@link TruffleObject}s.

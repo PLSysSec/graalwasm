@@ -85,45 +85,15 @@ public abstract class WasmAddNode extends WasmBinaryNode {
         return left + right;
     }
 
-    /**
-     * This is the slow path of the arbitrary-precision arithmetic. The {@link WasmBigNumber} type of
-     * Java is doing everything we need.
-     * <p>
-     * This specialization is automatically selected by the Truffle DSL if both the left and right
-     * operand are {@link WasmBigNumber} values. Because the type system defines an
-     * {@link ImplicitCast implicit conversion} from {@code long} to {@link WasmBigNumber} in
-     * {@link WasmTypes#castBigNumber(long)}, this specialization is also taken if the left or the
-     * right operand is a {@code long} value. Because the {@link #add(long, long) long}
-     * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
-     * both input values are {@code long} values but the primitive addition overflows.
-     */
-    /*@Specialization
-    @TruffleBoundary
-    protected WasmBigNumber add(WasmBigNumber left, WasmBigNumber right) {
-        return new WasmBigNumber(left.getValue().add(right.getValue()));
-    }*/
+    @Specialization
+    protected float add(float left, float right) {
+        return left + right;
+    }
 
-    /**
-     * Specialization for String concatenation. The Wasm specification says that String concatenation
-     * works if either the left or the right operand is a String. The non-string operand is
-     * converted then automatically converted to a String.
-     * <p>
-     * To implement these semantics, we tell the Truffle DSL to use a custom guard. The guard
-     * function is defined in {@link #isString this class}, but could also be in any superclass.
-     */
-    /*@Specialization(guards = "isString(left, right)")
-    @TruffleBoundary
-    protected String add(Object left, Object right) {
-        return left.toString() + right.toString();
-    }*/
-
-    /**
-     * Guard for String concatenation: returns true if either the left or the right operand is a
-     * {@link String}.
-     */
-    /*protected boolean isString(Object a, Object b) {
-        return a instanceof String || b instanceof String;
-    }*/
+    @Specialization
+    protected double add(double left, double right) {
+        return left + right;
+    }
 
     @Fallback
     protected Object typeError(Object left, Object right) {

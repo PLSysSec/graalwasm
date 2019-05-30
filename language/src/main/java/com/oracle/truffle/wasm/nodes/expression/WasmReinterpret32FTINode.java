@@ -6,11 +6,11 @@ import com.oracle.truffle.wasm.nodes.WasmUnaryNode;
 
 import java.lang.Float;
 
-@NodeInfo(shortName = "promote")
-public abstract class WasmPromoteNode extends WasmUnaryNode {
+@NodeInfo(shortName = "reinterpret_f32")
+public abstract class WasmReinterpret32FTINode extends WasmUnaryNode {
 
     @Specialization
-    protected double promote(float num) {
-        return (new Float(num)).doubleValue();
+    protected int reinterpret_f32(float num) {
+        return Float.floatToRawIntBits(num);
     }
 }

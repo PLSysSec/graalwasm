@@ -7,18 +7,16 @@ import com.oracle.truffle.wasm.nodes.WasmUnaryNode;
 import java.lang.Float;
 import java.lang.Double;
 
-@NodeInfo(shortName = "trunc")
-public abstract class WasmTruncNode extends WasmUnaryNode {
+@NodeInfo(shortName = "i32_trunc_u")
+public abstract class WasmTruncUnsignedIntNode extends WasmUnaryNode {
 
     @Specialization
-    protected float trunc(float num) {
-        return Float.intBitsToFloat((int) num);
+    protected int i32_trunc_u(float num) {
+        return (new Float(num)).intValue();
     }
 
-    // isNaN();
-
     @Specialization
-    protected double trunc(double num) {
-        return Double.longBitsToDouble((long) num);
+    protected int i32_trunc_u(double num) {
+        return (new Double(num)).intValue();
     }
 }

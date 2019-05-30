@@ -1,6 +1,19 @@
 package com.oracle.truffle.wasm.nodes.expression;
 
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.wasm.nodes.WasmUnaryNode;
 
-public abstract class WasmAbsNode extends WasmUnaryNode { // TODO abstract or final are the only two options?
+@NodeInfo(shortName = "abs")
+public abstract class WasmAbsNode extends WasmUnaryNode {
+
+    @Specialization
+    protected float abs(float num) {
+        return Math.abs(num);
+    }
+
+    @Specialization
+    protected double abs(double num) {
+        return Math.abs(num);
+    }
 }

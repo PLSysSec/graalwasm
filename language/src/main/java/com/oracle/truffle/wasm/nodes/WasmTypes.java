@@ -57,7 +57,7 @@ import com.oracle.truffle.wasm.runtime.WasmNull;
  * conversion methods for some types. In this class, we only cover types where the automatically
  * generated ones would not be sufficient.
  */
-@TypeSystem({boolean.class, int.class, long.class})//, float.class, double.class})
+@TypeSystem({boolean.class, int.class, long.class, float.class, double.class})
 public abstract class WasmTypes {
 
     /**

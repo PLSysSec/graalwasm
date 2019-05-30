@@ -22,7 +22,7 @@ public abstract class WasmTestNode extends WasmExpressionNode {
     }
 
     @Specialization
-    protected boolean test(long value) { // TODO works?
+    protected boolean test(long value) {
         if (value == 0) {
             return true;
         } else {

@@ -62,6 +62,16 @@ public abstract class WasmSubNode extends WasmBinaryNode {
     @Specialization
     protected long sub(long left, long right) {
         return left - right + (2 ^ 64);
+    } // FIXME addition necessary?
+
+    @Specialization
+    protected float sub(float left, float right) {
+        return left - right;
+    }
+
+    @Specialization
+    protected double sub(double left, double right) {
+        return left - right;
     }
 
     @Fallback

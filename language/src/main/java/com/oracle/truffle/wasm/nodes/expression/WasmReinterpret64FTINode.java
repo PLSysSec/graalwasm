@@ -6,11 +6,11 @@ import com.oracle.truffle.wasm.nodes.WasmUnaryNode;
 
 import java.lang.Double;
 
-@NodeInfo(shortName = "demote")
-public abstract class WasmDemoteNode extends WasmUnaryNode {
+@NodeInfo(shortName = "reinterpret_f64")
+public abstract class WasmReinterpret64FTINode extends WasmUnaryNode {
 
     @Specialization
-    protected float demote(double num) {
-        return (new Double(num)).floatValue();
+    protected long reinterpret_f64(double num) {
+        return Double.doubleToRawLongBits(num);
     }
 }
