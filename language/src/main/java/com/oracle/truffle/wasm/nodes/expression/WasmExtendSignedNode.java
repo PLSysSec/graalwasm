@@ -4,13 +4,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.wasm.nodes.WasmUnaryNode;
 
-import java.lang.Long;
+import java.lang.Integer;
 
-@NodeInfo(shortName = "wrap")
-public abstract class WasmWrapNode extends WasmUnaryNode {
+@NodeInfo(shortName = "extend_s")
+public abstract class WasmExtendSignedNode extends WasmUnaryNode {
 
     @Specialization
-    protected int wrap(long num) {
-        return (new Long(num)).intValue();
+    protected long extend_s(int num) {
+        return (new Integer(num).longValue());
     }
 }

@@ -381,7 +381,7 @@ public class WasmNodeFactory {
         return result;
     }
 
-    /*public WasmExpressionNode createUnary(Token opToken, WasmExpressionNode node) {
+    public WasmExpressionNode createUnary(Token opToken, WasmExpressionNode node) {
         if (node == null) {
             return null;
         }
@@ -398,7 +398,7 @@ public class WasmNodeFactory {
             case "popcnt":
                 result = WasmPopCountNodeGen.create(nodeUnboxed);
                 break;
-            case "neg":
+            /*case "neg":
                 result = WasmNegNodeGen.create(nodeUnboxed);
                 break;
             case "abs":
@@ -418,7 +418,7 @@ public class WasmNodeFactory {
                 break;
             case "nearest":
                 result = WasmNearestNodeGen.create(nodeUnboxed);
-                break;
+                break;*/
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
@@ -429,7 +429,7 @@ public class WasmNodeFactory {
         result.addExpressionTag();
 
         return result;
-    }*/
+    }
 
     /**
      * Returns the corresponding subclass of {@link WasmExpressionNode} for binary expressions. </br>
@@ -520,35 +520,38 @@ public class WasmNodeFactory {
         return result;
     }
 
-    /*public WasmExpressionNode createConvert(Token opToken, WasmExpressionNode node) {
+    public WasmExpressionNode createConvert(Token opToken, WasmExpressionNode node) {
         if (node == null) {
             return null;
         }
         final WasmExpressionNode nodeUnboxed = WasmUnboxNodeGen.create(node);
 
         final WasmExpressionNode result;
-        switch (opToken.getText().substring(4)) { // TODO one substring may need to be between '.' and '_', others signed v unsigned => does truffle automatically handle i32 v i64 (etc)? => will encounter during impl
-            case "wrap":
+        switch (opToken.getText().substring(4)) {
+            case "wrap_i64":
                 result = WasmWrapNodeGen.create(nodeUnboxed);
                 break;
-            case "extend":
-                result = WasmExtendNodeGen.create(nodeUnboxed);
+            case "extend_i32_s":
+                result = WasmExtendSignedNodeGen.create(nodeUnboxed);
                 break;
-            case "demote":
+            case "extend_i32_u":
+                result = WasmExtendUnsignedNodeGen.create(nodeUnboxed);
+                break;
+            /*case "demote_f64":
                 result = WasmDemoteNodeGen.create(nodeUnboxed);
                 break;
             case "promote":
                 result = WasmPromoteNodeGen.create(nodeUnboxed);
                 break;
             case "trunc":
-                result = WasmTruncNodeGen.create(nodeUnboxed); // TODO how diff from unary version??
+                result = WasmTruncNodeGen.create(nodeUnboxed);
                 break;
             case "convert":
                 result = WasmConvertNodeGen.create(nodeUnboxed);
                 break;
             case "reinterpret":
                 result = WasmReinterpretNodeGen.create(nodeUnboxed);
-                break;
+                break;*/
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
@@ -559,7 +562,7 @@ public class WasmNodeFactory {
         result.addExpressionTag();
 
         return result;
-    }*/
+    }
 
     /**
      * Returns an {@link WasmInvokeNode} for the given parameters.

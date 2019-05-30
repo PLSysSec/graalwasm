@@ -239,9 +239,9 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | CONST literal                               { $result = factory.createNumericLiteral($literal.start); }
   | TEST                                        { $result = factory.createTest($TEST, (WasmExpressionNode) body.pop()); }
   | COMPARE                                     { $result = factory.createCompare($COMPARE, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
-  | UNARY                                       //{ $result = factory.createUnary($UNARY, (WasmExpressionNode) body.pop()); }
+  | UNARY                                       { $result = factory.createUnary($UNARY, (WasmExpressionNode) body.pop()); }
   | BINARY                                      { $result = factory.createBinary($BINARY, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); } // TODO where could this casting fail? and what kind of error would it be?
-  | CONVERT                                     //{ $result = factory.createConvert($CONVERT, (WasmExpressionNode) body.pop()); }
+  | CONVERT                                     { $result = factory.createConvert($CONVERT, (WasmExpressionNode) body.pop()); }
   ;
 
 /*
