@@ -74,7 +74,7 @@ public abstract class WasmUnboxNode extends WasmExpressionNode {
     }
 
     @Specialization
-    protected static int fromLong(int value) {
+    protected static int fromInt(int value) {
         return value;
     }
 
@@ -84,12 +84,12 @@ public abstract class WasmUnboxNode extends WasmExpressionNode {
     }
 
     @Specialization
-    protected static float fromLong(float value) {
+    protected static float fromFloat(float value) {
         return value;
     }
 
     @Specialization
-    protected static double fromLong(double value) {
+    protected static double fromDouble(double value) {
         return value;
     }
 
