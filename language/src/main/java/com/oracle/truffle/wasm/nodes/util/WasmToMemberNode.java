@@ -65,13 +65,19 @@ public abstract class WasmToMemberNode extends Node {
 
     public abstract String execute(Object value) throws UnknownIdentifierException;
 
-    @Specialization
+    /*@Specialization
     protected static String fromString(String value) {
         return value;
-    }
+    }*/
 
     @Specialization
     protected static String fromBoolean(boolean value) {
+        return String.valueOf(value);
+    }
+
+    @Specialization
+    @TruffleBoundary
+    protected static String fromInt(int value) {
         return String.valueOf(value);
     }
 
@@ -83,20 +89,38 @@ public abstract class WasmToMemberNode extends Node {
 
     @Specialization
     @TruffleBoundary
+    protected static String fromFloat(float value) {
+        return String.valueOf(value);
+    }
+
+    @Specialization
+    @TruffleBoundary
+    protected static String fromDouble(double value) {
+        return String.valueOf(value);
+    }
+
+    /*@Specialization
+    @TruffleBoundary
     protected static String fromBigNumber(WasmBigNumber value) {
         return value.toString();
-    }
+    }*/
 
     @Specialization(limit = "LIMIT")
     protected static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownIdentifierException {
         try {
-            if (interop.fitsInLong(value)) {
+            if (interop.fitsInInt(value)) {
+                return intToString(interop.asInt(value));
+            } else if (interop.fitsInLong(value)) {
                 return longToString(interop.asLong(value));
+            } else if (interop.fitsInFloat(value)) {
+                return floatToString(interop.asFloat(value));
+            } else if (interop.fitsInDouble(value)) {
+                return doubleToString(interop.asDouble(value));
             } else if (interop.isString(value)) {
                 return interop.asString(value);
-            } else if (interop.isNumber(value) && value instanceof WasmBigNumber) {
+            } /*else if (interop.isNumber(value) && value instanceof WasmBigNumber) {
                 return bigNumberToString((WasmBigNumber) value);
-            } else {
+            }*/ else {
                 throw error(value);
             }
         } catch (UnsupportedMessageException e) {
@@ -110,14 +134,29 @@ public abstract class WasmToMemberNode extends Node {
         return UnknownIdentifierException.create(value.toString());
     }
 
-    @TruffleBoundary
+    /*@TruffleBoundary
     private static String bigNumberToString(WasmBigNumber value) {
         return value.toString();
+    }*/
+
+    @TruffleBoundary
+    private static String intToString(int intValue) {
+        return String.valueOf(intValue);
     }
 
     @TruffleBoundary
     private static String longToString(long longValue) {
         return String.valueOf(longValue);
+    }
+
+    @TruffleBoundary
+    private static String floatToString(float floatValue) {
+        return String.valueOf(floatValue);
+    }
+
+    @TruffleBoundary
+    private static String doubleToString(double doubleValue) {
+        return String.valueOf(doubleValue);
     }
 
 }

@@ -8,6 +8,9 @@ import com.oracle.truffle.wasm.nodes.WasmUnaryNode;
 public abstract class WasmAbsNode extends WasmUnaryNode {
 
     @Specialization
+    protected int abs(int num) { return Math.abs(num); }
+
+    @Specialization
     protected float abs(float num) {
         return Math.abs(num);
     }

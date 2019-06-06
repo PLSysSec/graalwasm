@@ -273,9 +273,11 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     protected boolean isObjectOfLanguage(Object object) {
         if (!(object instanceof TruffleObject)) {
             return false;
-        } else if (object instanceof WasmBigNumber || object instanceof WasmFunction || object instanceof WasmNull) {
+        } else if (object instanceof Integer || object instanceof Long || object instanceof Float || object instanceof Double || object instanceof Boolean) {
             return true;
-        } else if (WasmContext.isWasmObject(object)) {
+        } /*else if (object instanceof WasmBigNumber || object instanceof WasmFunction || object instanceof WasmNull) {
+            return true; // TODO
+        }*/ else if (WasmContext.isWasmObject(object)) {
             return true;
         } else {
             return false;
@@ -293,9 +295,15 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
                 return "ANY";
             }
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-            if (interop.fitsInLong(value)) {
+            if (interop.fitsInInt(value)) {
+                return Integer.toString(interop.asInt(value));
+            } else if (interop.fitsInLong(value)) {
                 return Long.toString(interop.asLong(value));
-            } else if (interop.isBoolean(value)) {
+            } else if (interop.fitsInFloat(value)) {
+                return Float.toString(interop.asFloat(value));
+            } else if (interop.fitsInDouble(value)) {
+                return Double.toString(interop.asDouble(value));
+            }else if (interop.isBoolean(value)) {
                 return Boolean.toString(interop.asBoolean(value));
             } else if (interop.isString(value)) {
                 return interop.asString(value);
@@ -309,7 +317,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
                 }
             } else if (interop.hasMembers(value)) {
                 return "Object";
-            } else if (value instanceof WasmBigNumber) {
+            } else if (value instanceof WasmBigNumber) { // TODO remove
                 return value.toString();
             } else {
                 return "Unsupported";
@@ -330,7 +338,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             return "ANY";
         }
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-        if (interop.isNumber(value) || value instanceof WasmBigNumber) {
+        if (interop.isNumber(value)) { // || value instanceof WasmBigNumber) {
             return "Number";
         } else if (interop.isBoolean(value)) {
             return "Boolean";
@@ -338,7 +346,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             return "String";
         } else if (interop.isNull(value)) {
             return "NULL";
-        } else if (interop.isExecutable(value)) {
+        } else if (interop.isExecutable(value)) { // TODO what this for?
             return "Function";
         } else if (interop.hasMembers(value)) {
             return "Object";

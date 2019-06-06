@@ -15,12 +15,12 @@ public abstract class WasmRotateLeftNode extends WasmBinaryNode {
     @Specialization
     protected int rotl(int num, int amt) {
         return Integer.rotateLeft(num, amt);
-    }
+    } // TODO check unsigned?
 
     @Specialization
     protected long rotl(long num, int amt) {
         return Long.rotateLeft(num, amt);
-    }
+    } // TODO check unsigned?
 
     @Fallback
     protected Object typeError(Object num, Object amt) {

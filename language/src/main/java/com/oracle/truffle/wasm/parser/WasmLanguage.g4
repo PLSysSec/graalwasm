@@ -54,9 +54,12 @@ import java.util.Stack;
 import java.util.List;
 import java.util.Map;
 
+import java.lang.Integer;
+
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.wasm.WasmLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 import com.oracle.truffle.wasm.nodes.WasmRootNode;
 import com.oracle.truffle.wasm.nodes.WasmStatementNode;
@@ -72,6 +75,7 @@ import com.oracle.truffle.wasm.parser.WasmParseError;
 {
 private WasmNodeFactory factory;
 private Source source;
+private static int numlocals = 0;
 
 private static final class BailoutErrorListener extends BaseErrorListener {
     private final Source source;
@@ -212,31 +216,32 @@ bind_var
 
 instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   : plain_instr[body]                                 { $result = $plain_instr.result; }
-  //| call_instr_instr                            //{ $result = $call_instr_instr.result; }
-  //| block_instr                                 //{ $result = $block_instr.result; }
-  | expr[body]                                        { $result = $expr.result; }
+  //| call_instr_instr                                  { $result = $call_instr_instr.result; }
+  | block_instr                                       { $result = $block_instr.result; }
+  //| expr[body]                                        { $result = $expr.result; }
   ;
 
 plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   : UNREACHABLE                                 { $result = factory.createUnreachable($UNREACHABLE); }
+  | PRINT                                       { $result = factory.createPrint($PRINT, (WasmExpressionNode) body.pop()); }
   | NOP                                         { $result = factory.createNop($NOP); }
   | DROP                                        { $result = factory.createDrop($DROP); }
   | SELECT                                      { $result = factory.createSelect($SELECT); }
-  | BR var                                      //{ $result = factory.createBranch($BR, var); }
-  | BR_IF var                                   //{ $result = factory.createBranch($BR_IF, var); } TODO what does this look like in stack notation?
-  | BR_TABLE var+                               //{ $result = factory.createBranch($BR_TABLE, var); } TODO how to handle 'var+' ?
+  | BR var                                      //{ $result = factory.createBranch($BR, $var.start); }
+  | BR_IF var                                   //{ $result = factory.createBranch($BR_IF, $var.start); } TODO what does this look like in stack notation?
+  | BR_TABLE var+                               //{ $result = factory.createBranch($BR_TABLE, $var.start); } TODO how to handle 'var+' ? include index too? and what about default?
   | RETURN                                      { $result = factory.createReturn($RETURN, null); }
-  | CALL var                                    //{ $result = factory.createCall($CALL, var); } // TODO may be split between local/global
-  | LOCAL_GET var                               //{ $result = factory.createGet($LOCAL_GET, var); }
-  | LOCAL_SET var                               //{ $result = factory.createSet($LOCAL_SET, var); }
-  | LOCAL_TEE var                               //{ $result = factory.createTee($LOCAL_TEE, var); }
-  | GLOBAL_GET var                              //{ $result = factory.createGet($GLOBAL_GET, var); }
-  | GLOBAL_SET var                              //{ $result = factory.createSet($GLOBAL_SET, var); }
+  | CALL var                                    //{ $result = factory.createCall($CALL, $var.start); }
+  | LOCAL_GET var                               { $result = factory.createRead(factory.createStringLiteral($var.start, false)); }
+  | LOCAL_SET var                               //{ $result = factory.createAssignment($LOCAL_SET, $var.start, (WasmExpressionNode) body.pop()); }
+  | LOCAL_TEE var                               //{ $result = factory.createTee($LOCAL_TEE, $var.start); }
+  | GLOBAL_GET var                              { $result = factory.createRead(factory.createStringLiteral($var.start, false)); }
+  | GLOBAL_SET var                              //{ $result = factory.createSet($GLOBAL_SET, $var.start); }
   | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?           //{ $result = factory.createLoad($LOAD, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
   | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?          //{ $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
   | MEMORY_SIZE                                 //{ $result = factory.createMemorySize($MEMORY_SIZE); }
   | MEMORY_GROW                                 //{ $result = factory.createMemoryGrow($MEMORY_GROW); }
-  | CONST literal                               { $result = factory.createNumericLiteral($literal.start); }
+  | CONST literal                               { $result = factory.createNumericLiteral($CONST, $literal.start); } // TODO handle label case + diff sizes (no exceptions)
   | TEST                                        { $result = factory.createTest($TEST, (WasmExpressionNode) body.pop()); }
   | COMPARE                                     { $result = factory.createCompare($COMPARE, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
   | UNARY                                       { $result = factory.createUnary($UNARY, (WasmExpressionNode) body.pop()); }
@@ -264,31 +269,45 @@ call_instr_params_instr
 call_instr_results_instr
   : (LPAR RESULT value_type* RPAR)* instr
   ;
-
-block_instr
-  : (BLOCK | LOOP) bind_var? block END bind_var?
-  | IF bind_var? block (ELSE bind_var? instr_list[null])? END bind_var?
+*/
+block_instr returns [WasmStatementNode result]
+  : l=(BLOCK | LOOP) bv1=bind_var?      { if ($l.text.compareTo("block") == 0 && $bv1.start != null) { SemErr($bv1.start, "block has label at beginning"); } }
+    block END bv2=bind_var?             { else if ($l.text.compareTo("loop") == 0 && $bv2.start != null) { SemErr($bv2.start, "loop has label at end"); }
+                                          else { $result = $block.result; } }
+  | IF bind_var? block
+    (                                   { factory.startBlock();
+                                          Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
+    ELSE bind_var? res=instr_list[body]
+    )? END bind_var? // TODO no 'then'?
+                                        { $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
   ;
 
 block_type
   : LPAR RESULT value_type RPAR
   ;
 
-block
-  : block_type? instr_list[null]
-  ;
-*/
+block returns [WasmStatementNode result]
+  :                                         { factory.startBlock();
+                                              Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
+    t=block_type? res=instr_list[body]        { if ($t.start != null) {}
+                                                $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
+  ; // TODO validate against block_type
+
 expr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
-  : LPAR expr1[body] RPAR                             { $result = $expr1.result; }
+  : s=LPAR
+    x=expr1[body]
+    e=RPAR                             { $result = factory.createParenExpression((WasmExpressionNode) $x.result, $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
   ;
 
 expr1 [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   : plain_instr[body]
-    (expr[body])* //TODO might need to update body before passing it to future expressions
+    (
+    r=expr[body]
+    )*
   //| CALL_INDIRECT call_expr_type
   //| BLOCK bind_var? block
   //| LOOP bind_var? block
-  //| IF bind_var? if_block
+  //| IF bind_var? if_block[body]
   ;
 /*
 call_expr_type
@@ -303,14 +322,13 @@ call_expr_results
   : (LPAR RESULT value_type* RPAR)* expr*
   ;
 
-if_block
-  : block_type if_block
-  | expr* LPAR THEN instr_list[null] RPAR (LPAR ELSE instr_list[null] RPAR)?
+if_block [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
+  : block_type if_block[body]
+  | expr[body]* LPAR THEN instr_list[body] RPAR (LPAR ELSE instr_list[body] RPAR)?
   ;
 */
 instr_list [Stack<WasmStatementNode> body] returns [Stack<WasmStatementNode> result]
-  :
-    (
+  : (
     instr[body]                                 { body.push($instr.result); }
     )*
     //call_instr?                                 { body.push($call_instr.result); }
@@ -324,16 +342,13 @@ const_expr
 /* Functions */
 
 func
-  : LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); } // TODO nullptr if no bind_var => how to handle? even if main exists, fails on any other fxn without a name
+  : LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); } // TODO nullptr if no bind_var => default val?
     func_fields                                 { factory.finishFunction($func_fields.result); }
     RPAR
   ;
 
 func_fields returns [WasmStatementNode result]
   : type_use? func_fields_body                  { $result = $func_fields_body.result; }
-  // TODO create new block here?? + body List?
-  // TODO finishBlock will flatten => WasmStatementNode
-  // TODO trying to resolve BLOCK CREATION with PARENS: I NEED PARENSSS EITHER THAT OR NO NEW BLOCK/SCOPE
   | inline_import type_use? func_fields_import
   | inline_export func_fields
   ;
@@ -348,27 +363,28 @@ func_fields_import_result
 
 func_fields_body returns [WasmStatementNode result]
   : (
-    LPAR PARAM value_type* RPAR
-    | LPAR PARAM VAR value_type RPAR
+    LPAR PARAM value_type* RPAR                 //{ factory.addFormalParameter(Integer.toString(numlocals++)); }
+    |
+    LPAR PARAM VAR value_type RPAR              { factory.addFormalParameter($VAR); }
+                                                  //factory.addFormalParameter(Integer.toString(numlocals++)); } // TODO so can ref w both name AND index
     )*
     func_result_body                            { $result = $func_result_body.result; }
   ;
 
 func_result_body returns [WasmStatementNode result]
-  : (LPAR RESULT value_type* RPAR)* func_body   { $result = $func_body.result; }
+  : (LPAR RESULT value_type RPAR)? func_body    { $result = $func_body.result; }
   ; // apparently part of "validation rules" => should I handle this? TODO handle mismatch
+  // { -predicate to stop parsing if eval -> false }?
 
 func_body returns [WasmStatementNode result]
   :                                             { factory.startBlock();
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
-                                                  //List<WasmStatementNode> body = new ArrayList<>(); }
     (
     LPAR LOCAL value_type* RPAR                 // TODO add to body
-    | LPAR LOCAL bind_var value_type RPAR       // TODO add to body
+    |
+    LPAR LOCAL bind_var value_type RPAR         // TODO add to body
     )*
-    s=LPAR
-    res=instr_list[body]
-    e=RPAR                                      { $result = factory.finishBlock(new ArrayList($res.result), $s.getStartIndex(), $e.getStopIndex() - $s.getStartIndex() + 1); }
+    res=instr_list[body]                        { $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
   ;
 
 /* Tables, Memories & Globals */
@@ -584,6 +600,8 @@ CONST : NXX '.const' ;
 FUNCREF: 'funcref' ;
 MUT: 'mut' ;
 
+PRINT: 'println' ;
+
 NOP: 'nop' ;
 UNREACHABLE: 'unreachable' ;
 DROP: 'drop' ;
@@ -601,11 +619,11 @@ SELECT: 'select' ;
 CALL: 'call' ;
 CALL_INDIRECT: 'call_indirect' ;
 
-LOCAL_GET: 'get_local' ;
-LOCAL_SET: 'set_local' ;
-LOCAL_TEE: 'tee_local' ;
-GLOBAL_GET: 'get_global' ;
-GLOBAL_SET: 'set_global' ;
+LOCAL_GET: 'local.get' ;
+LOCAL_SET: 'local.set' ;
+LOCAL_TEE: 'local.tee' ;
+GLOBAL_GET: 'global.get' ;
+GLOBAL_SET: 'global.set' ;
 
 LOAD : NXX '.load' (MEM_SIZE '_' SIGN)? ;
 STORE : NXX '.store' (MEM_SIZE)? ;

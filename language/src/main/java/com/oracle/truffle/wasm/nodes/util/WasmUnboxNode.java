@@ -63,13 +63,18 @@ public abstract class WasmUnboxNode extends WasmExpressionNode {
 
     static final int LIMIT = 5;
 
-    @Specialization
+    /*@Specialization
     protected static String fromString(String value) {
+        return value;
+    }*/
+
+    @Specialization
+    protected static boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    protected static boolean fromBoolean(boolean value) {
+    protected static int fromLong(int value) {
         return value;
     }
 
@@ -79,6 +84,16 @@ public abstract class WasmUnboxNode extends WasmExpressionNode {
     }
 
     @Specialization
+    protected static float fromLong(float value) {
+        return value;
+    }
+
+    @Specialization
+    protected static double fromLong(double value) {
+        return value;
+    }
+
+    /*@Specialization
     protected static WasmBigNumber fromBigNumber(WasmBigNumber value) {
         return value;
     }
@@ -91,7 +106,7 @@ public abstract class WasmUnboxNode extends WasmExpressionNode {
     @Specialization
     protected static WasmNull fromFunction(WasmNull value) {
         return value;
-    }
+    }*/
 
     @Specialization(limit = "LIMIT")
     public static Object fromForeign(Object value, @CachedLibrary("value") InteropLibrary interop) {

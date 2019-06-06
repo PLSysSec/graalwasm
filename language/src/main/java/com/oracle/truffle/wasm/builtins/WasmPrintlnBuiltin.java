@@ -62,6 +62,17 @@ import com.oracle.truffle.wasm.runtime.WasmContext;
 public abstract class WasmPrintlnBuiltin extends WasmBuiltinNode {
 
     @Specialization
+    public int println(int value, @CachedContext(WasmLanguage.class) WasmContext context) {
+        doPrint(context.getOutput(), value);
+        return value;
+    }
+
+    @TruffleBoundary
+    private static void doPrint(PrintWriter out, int value) {
+        out.println(value);
+    }
+
+    @Specialization
     public long println(long value, @CachedContext(WasmLanguage.class) WasmContext context) {
         doPrint(context.getOutput(), value);
         return value;
@@ -73,6 +84,28 @@ public abstract class WasmPrintlnBuiltin extends WasmBuiltinNode {
     }
 
     @Specialization
+    public float println(float value, @CachedContext(WasmLanguage.class) WasmContext context) {
+        doPrint(context.getOutput(), value);
+        return value;
+    }
+
+    @TruffleBoundary
+    private static void doPrint(PrintWriter out, float value) {
+        out.println(value);
+    }
+
+    @Specialization
+    public double println(double value, @CachedContext(WasmLanguage.class) WasmContext context) {
+        doPrint(context.getOutput(), value);
+        return value;
+    }
+
+    @TruffleBoundary
+    private static void doPrint(PrintWriter out, double value) {
+        out.println(value);
+    }
+
+    /*@Specialization
     public boolean println(boolean value, @CachedContext(WasmLanguage.class) WasmContext context) {
         doPrint(context.getOutput(), value);
         return value;
@@ -103,5 +136,5 @@ public abstract class WasmPrintlnBuiltin extends WasmBuiltinNode {
     @TruffleBoundary
     private static void doPrint(PrintWriter out, Object value) {
         out.println(value);
-    }
+    }*/
 }

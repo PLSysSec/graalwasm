@@ -251,8 +251,10 @@ public final class WasmContext {
      */
 
     public static Object fromForeignValue(Object a) {
-        if (a instanceof Long || a instanceof WasmBigNumber || a instanceof String || a instanceof Boolean) {
+        if (a instanceof Integer || a instanceof Long || a instanceof Float || a instanceof Double || a instanceof Boolean) {//(a instanceof Long || a instanceof WasmBigNumber || a instanceof String || a instanceof Boolean) {
             return a;
+        } else if (a instanceof String) {
+            return a.hashCode();
         } else if (a instanceof Character) {
             return String.valueOf(a);
         } else if (a instanceof Number) {
@@ -268,7 +270,7 @@ public final class WasmContext {
 
     @TruffleBoundary
     private static long fromForeignNumber(Object a) {
-        return ((Number) a).longValue();
+        return ((Number) a).longValue(); // TODO why long?
     }
 
     public CallTarget parse(Source source) {

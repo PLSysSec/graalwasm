@@ -46,6 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltin;
+import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltinFactory;
 import com.oracle.truffle.wasm.nodes.expression.*;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.Token;
@@ -269,6 +271,46 @@ public class WasmNodeFactory {
         final WasmReturnNode returnNode = new WasmReturnNode(valueNode);
         returnNode.setSourceSection(start, length);
         return returnNode;
+    }
+
+    public WasmExpressionNode createPrint(Token t, WasmExpressionNode valueNode) {
+        final WasmExpressionNode valueUnboxed = WasmUnboxNodeGen.create(valueNode);
+        final WasmExpressionNode[] arr = {valueUnboxed};
+        final WasmExpressionNode printNode = WasmPrintlnBuiltinFactory.create(arr);
+        srcFromToken(printNode, t);
+        return printNode;
+    }
+
+    /*public WasmStatementNode createBranch(Token t, Token var) { // TODO might need more info (from stack) to differentiate break v cont
+        if (var.charAt(0) == '$') { // resolve index/label
+
+        } else {
+
+        }
+    }*/
+
+    /**
+     * Returns an {@link WasmBreakNode} for the given token.
+     *
+     * @param breakToken The token containing the break node's info.
+     * @return A WasmBreakNode for the given token.
+     */
+    public WasmStatementNode createBreak(Token breakToken) {
+        final WasmBreakNode breakNode = new WasmBreakNode();
+        srcFromToken(breakNode, breakToken);
+        return breakNode;
+    }
+
+    /**
+     * Returns an {@link WasmContinueNode} for the given token.
+     *
+     * @param continueToken The token containing the continue node's info.
+     * @return A WasmContinueNode built using the given token.
+     */
+    public WasmStatementNode createContinue(Token continueToken) {
+        final WasmContinueNode continueNode = new WasmContinueNode();
+        srcFromToken(continueNode, continueToken);
+        return continueNode;
     }
 
     public WasmStatementNode createUnreachable(Token u) {
@@ -689,7 +731,7 @@ public class WasmNodeFactory {
             result = WasmReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new WasmFunctionLiteralNode(language, name);
+            result = new WasmFunctionLiteralNode(language, name); // FIXME
         }
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();
@@ -710,15 +752,27 @@ public class WasmNodeFactory {
         return result;
     }
 
-    public WasmExpressionNode createNumericLiteral(Token literalToken) {
+    public WasmExpressionNode createNumericLiteral(Token opToken, Token literalToken) {
         WasmExpressionNode result;
-        try {
-            /* Try if the literal is small enough to fit into a long value. */
-            result = new WasmIntegerLiteralNode(Integer.parseInt(literalToken.getText()));
-        } catch (NumberFormatException ex) {
-            /* Overflow of long value, so fall back to BigInteger. */
-            result = new WasmLongLiteralNode(Long.parseLong(literalToken.getText()));
-        }
+        //try {
+            switch(opToken.getText().substring(0, 3)) {
+                case "i32":
+                    result = new WasmIntegerLiteralNode(Integer.parseInt(literalToken.getText()));
+                    break;
+                case "i64":
+                    result = new WasmLongLiteralNode(Long.parseLong(literalToken.getText()));
+                    break;
+                case "f32":
+                    result = new WasmFloatLiteralNode(Float.parseFloat(literalToken.getText()));
+                    break;
+                case "f64":
+                    result = new WasmDoubleLiteralNode(Double.parseDouble(literalToken.getText()));
+                    break;
+                default:
+                    throw new RuntimeException("unexpected type: " + opToken.getText().substring(0, 3));
+            }
+        /*} catch (NumberFormatException ex) {
+        }*/
         srcFromToken(result, literalToken);
         result.addExpressionTag();
         return result;
@@ -780,6 +834,14 @@ public class WasmNodeFactory {
 
         return result;
     }
+
+    /*public WasmExpressionNode createLoad() {
+
+    }
+
+    public WasmExpressionNode createStore() {
+
+    }*/
 
     /**
      * Creates source description of a single token.

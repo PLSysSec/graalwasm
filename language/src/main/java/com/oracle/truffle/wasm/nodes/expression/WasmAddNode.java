@@ -50,6 +50,8 @@ import com.oracle.truffle.wasm.nodes.WasmBinaryNode;
 import com.oracle.truffle.wasm.nodes.WasmTypes;
 import com.oracle.truffle.wasm.runtime.WasmBigNumber;
 
+import java.lang.Float;
+
 /**
  * Wasm node that performs the "+" operation, which performs addition on arbitrary precision numbers,
  * as well as String concatenation if one of the operands is a String.
@@ -87,6 +89,15 @@ public abstract class WasmAddNode extends WasmBinaryNode {
 
     @Specialization
     protected float add(float left, float right) {
+        /*if (Float.isNaN(left) && Float.isNaN(right)) {
+            return left;
+        } else if (Float.isNaN(left)) {
+            return left;
+        } else if (Float.isNaN(right)) {
+            return right;
+        } else if (left == Float.POSITIVE_INFINITY && RIGHT == FLOAT.POSITIVE_INFINITY) {
+            return left;
+        } else if */
         return left + right;
     }
 
