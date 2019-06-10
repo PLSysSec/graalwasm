@@ -66,7 +66,7 @@ import java.lang.Float;
 public abstract class WasmAddNode extends WasmBinaryNode {
 
     @Specialization
-    protected int add(int left, int right) { return left + right; }
+    protected int add(int left, int right) { return (left + right) % (2 ^ 32); }
     /**
      * Specialization for primitive {@code long} values. This is the fast path of the
      * arbitrary-precision arithmetic. We need to check for overflows of the addition, and switch to
@@ -84,26 +84,45 @@ public abstract class WasmAddNode extends WasmBinaryNode {
      */
     @Specialization
     protected long add(long left, long right) {
-        return left + right;
+        return (left + right) % (2 ^ 64);
     }
 
     @Specialization
     protected float add(float left, float right) {
-        /*if (Float.isNaN(left) && Float.isNaN(right)) {
+        if (Float.isNaN(left) && Float.isNaN(right)) {
             return left;
         } else if (Float.isNaN(left)) {
             return left;
         } else if (Float.isNaN(right)) {
             return right;
-        } else if (left == Float.POSITIVE_INFINITY && RIGHT == FLOAT.POSITIVE_INFINITY) {
+        } else if (left == Float.POSITIVE_INFINITY && right == Float.POSITIVE_INFINITY) {
             return left;
-        } else if */
-        return left + right;
+        } else if (left == Float.NEGATIVE_INFINITY && right == Float.NEGATIVE_INFINITY) {
+            return left;
+        } else if ((left == Float.POSITIVE_INFINITY && right == Float.NEGATIVE_INFINITY) || (left == Float.NEGATIVE_INFINITY && right == Float.POSITIVE_INFINITY)) {
+            return 0; // TODO nan{}; ?
+        } else if (Float.isInfinite(left)) {
+            return left;
+        } else if (Float.isInfinite(right)) {
+            return right;
+        } else if ((left == -0 && right == +0) || (left == +0 && right == -0)) {
+            return +0;
+        } else if ((left == +0 && right == +0) || (left == -0 && right == -0)) {
+            return left;
+        } else if (left == +0 || left == -0) {
+            return right;
+        } else if (right == +0 || right == -0) {
+            return left;
+        } else if (Math.abs(left) == Math.abs(right)) {
+            return +0;
+        } else {
+            return left + right;
+        }
     }
 
     @Specialization
     protected double add(double left, double right) {
-        return left + right;
+        return left + right; // TODO once Float version is tested, copy here
     }
 
     @Fallback

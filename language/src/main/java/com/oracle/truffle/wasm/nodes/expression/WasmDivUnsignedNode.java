@@ -60,19 +60,17 @@ public abstract class WasmDivUnsignedNode extends WasmBinaryNode {
     @Specialization
     protected int div_u(int left, int right) {
         if (right == 0) {
-            return 0; // FIXME undefined
+            return -1;
         }
-        int result = Integer.divideUnsigned(left, right); // TODO correctly truncated?
-        return result;
+        return Integer.divideUnsigned(left, right);
     }
 
     @Specialization
     protected long div_u(long left, long right) {
         if (right == 0) {
-            return 0; // FIXME undefined
+            return -1;
         }
-        long result = Long.divideUnsigned(left, right); // TODO correctly truncated?
-        return result;
+        return Long.divideUnsigned(left, right);
     }
 
     @Fallback

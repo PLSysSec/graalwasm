@@ -105,13 +105,18 @@ public abstract class WasmPrintlnBuiltin extends WasmBuiltinNode {
         out.println(value);
     }
 
-    /*@Specialization
+    @Specialization
     public boolean println(boolean value, @CachedContext(WasmLanguage.class) WasmContext context) {
-        doPrint(context.getOutput(), value);
+        if (value) { // TODO does this decrease perf?
+            doPrint(context.getOutput(), (int) 1);
+        } else {
+            doPrint(context.getOutput(), (int) 0);
+        }
+        //doPrint(context.getOutput(), value);
         return value;
     }
 
-    @TruffleBoundary
+    /*@TruffleBoundary
     private static void doPrint(PrintWriter out, boolean value) {
         out.println(value);
     }

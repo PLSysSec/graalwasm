@@ -56,12 +56,12 @@ public abstract class WasmMulNode extends WasmBinaryNode {
 
     @Specialization
     protected int mul(int left, int right) {
-        return left * right;
+        return (left * right) % (2 ^ 32);
     }
 
     @Specialization
     protected long mul(long left, long right) {
-        return left * right;
+        return (left * right) % (2 ^ 64);
     }
 
     @Specialization

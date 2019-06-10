@@ -56,13 +56,13 @@ public abstract class WasmSubNode extends WasmBinaryNode {
 
     @Specialization
     protected int sub(int left, int right) {
-        return left - right + (2 ^ 32);
+        return (left - right + (2 ^ 32)) % (2 ^ 32);
     }
 
     @Specialization
     protected long sub(long left, long right) {
-        return left - right + (2 ^ 64);
-    } // FIXME addition necessary?
+        return (left - right + (2 ^ 64)) % (2 ^ 64);
+    }
 
     @Specialization
     protected float sub(float left, float right) {

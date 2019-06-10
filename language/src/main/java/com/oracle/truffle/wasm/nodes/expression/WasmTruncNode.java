@@ -12,13 +12,11 @@ public abstract class WasmTruncNode extends WasmUnaryNode {
 
     @Specialization
     protected float trunc(float num) {
-        return Float.intBitsToFloat((int) num);
+        return (new Float(num)).intValue();
     }
-
-    // isNaN();
 
     @Specialization
     protected double trunc(double num) {
-        return Double.longBitsToDouble((long) num);
+        return (new Double(num)).intValue();
     }
 }

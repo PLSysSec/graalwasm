@@ -57,19 +57,17 @@ public abstract class WasmDivSignedNode extends WasmBinaryNode {
     @Specialization
     protected int div_s(int left, int right) {
         if (right == 0) {
-            return 0; // FIXME undefined
+            return -1;
         }
-        int result = left / right;
-        return result;
+        return left / right;
     }
 
     @Specialization
     protected long div_s(long left, long right) {
         if (right == 0) {
-            return 0; // FIXME undefined
+            return -1;
         }
-        long result = left / right;
-        return result;
+        return left / right;
     }
 
     @Fallback

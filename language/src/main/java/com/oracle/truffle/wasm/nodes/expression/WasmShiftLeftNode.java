@@ -12,13 +12,13 @@ public abstract class WasmShiftLeftNode extends WasmBinaryNode {
     @Specialization
     protected int shl(int num, int amt) {
         int k = amt % 32;
-        return num << k;
+        return (num << k) % (2 ^ 32);
     }
 
     @Specialization
     protected long shl(long num, long amt) {
         long k = amt % 64;
-        return num << k;
+        return (num << k) % (2 ^ 64);
     }
 
     @Fallback

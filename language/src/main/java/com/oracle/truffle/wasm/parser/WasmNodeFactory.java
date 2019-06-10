@@ -517,13 +517,16 @@ public class WasmNodeFactory {
                 result = WasmRemUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "and":
-                result = new WasmLogicalAndNode(leftUnboxed, rightUnboxed);
+                //result = new WasmLogicalAndNode(leftUnboxed, rightUnboxed);
+                result = WasmBitwiseAndNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "or":
-                result = new WasmLogicalOrNode(leftUnboxed, rightUnboxed);
+                //result = new WasmLogicalOrNode(leftUnboxed, rightUnboxed);
+                result = WasmBitwiseOrNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "xor":
-                result = new WasmLogicalOrNode(new WasmLogicalAndNode(leftUnboxed, WasmLogicalNotNodeGen.create(rightUnboxed)), new WasmLogicalAndNode(WasmLogicalNotNodeGen.create(leftUnboxed), rightUnboxed));
+                //result = new WasmLogicalOrNode(new WasmLogicalAndNode(leftUnboxed, WasmLogicalNotNodeGen.create(rightUnboxed)), new WasmLogicalAndNode(WasmLogicalNotNodeGen.create(leftUnboxed), rightUnboxed));
+                result = WasmBitwiseXorNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "shl":
                 result = WasmShiftLeftNodeGen.create(leftUnboxed, rightUnboxed);
@@ -757,10 +760,10 @@ public class WasmNodeFactory {
         //try {
             switch(opToken.getText().substring(0, 3)) {
                 case "i32":
-                    result = new WasmIntegerLiteralNode(Integer.parseInt(literalToken.getText()));
+                    result = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(literalToken.getText())); // TODO is decode better? parses as unsigned.... but handles hex
                     break;
                 case "i64":
-                    result = new WasmLongLiteralNode(Long.parseLong(literalToken.getText()));
+                    result = new WasmLongLiteralNode(Long.parseUnsignedLong(literalToken.getText()));
                     break;
                 case "f32":
                     result = new WasmFloatLiteralNode(Float.parseFloat(literalToken.getText()));
@@ -772,6 +775,8 @@ public class WasmNodeFactory {
                     throw new RuntimeException("unexpected type: " + opToken.getText().substring(0, 3));
             }
         /*} catch (NumberFormatException ex) {
+            System.out.println("NumberFormatException for " + opToken.getText() + " " + literalToken.getText() + ": " + ex.getMessage());
+            result = null;
         }*/
         srcFromToken(result, literalToken);
         result.addExpressionTag();
