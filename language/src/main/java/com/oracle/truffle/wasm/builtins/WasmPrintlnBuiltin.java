@@ -131,7 +131,7 @@ public abstract class WasmPrintlnBuiltin extends WasmBuiltinNode {
     private static void doPrint(PrintWriter out, String value) {
         out.println(value);
     }
-
+*/
     @Specialization
     public Object println(Object value, @CachedContext(WasmLanguage.class) WasmContext context) {
         doPrint(context.getOutput(), value);
@@ -141,5 +141,5 @@ public abstract class WasmPrintlnBuiltin extends WasmBuiltinNode {
     @TruffleBoundary
     private static void doPrint(PrintWriter out, Object value) {
         out.println(value);
-    }*/
+    }
 }

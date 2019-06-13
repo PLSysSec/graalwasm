@@ -230,12 +230,14 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | BR var                                              //{ $result = factory.createBranch($BR, $var.start); }
   | BR_IF var                                           //{ $result = factory.createBranch($BR_IF, $var.start); } TODO what does this look like in stack notation?
   | BR_TABLE var+                                       //{ $result = factory.createBranch($BR_TABLE, $var.start); } TODO how to handle 'var+' ? include index too? and what about default?
-  | RETURN                                              { $result = factory.createReturn($RETURN, null); }
-  | CALL var                                            //{ $result = factory.createCall($var.start, null, $CALL); }
+  | RETURN                                              { $result = factory.createReturn($RETURN, (WasmExpressionNode) body.pop()); }
+  | CALL var                                            { List<WasmExpressionNode> params = new ArrayList<>();
+                                                          params.add((WasmExpressionNode) body.pop());
+                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($var.start, false)), params, $var.start); } // TODO num params depends on the function...
   | LOCAL_GET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false));
-                                                          else $result = factory.createRead(factory.createIndexLiteral($var.start)); }
+                                                          else $result = factory.createRead(factory.createIndexLiteral($var.start, false)); }
   | LOCAL_SET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createAssignment(factory.createStringLiteral($var.start, false), (WasmExpressionNode) body.pop());
-                                                          else $result = factory.createAssignment(factory.createIndexLiteral($var.start), (WasmExpressionNode) body.pop()); }
+                                                          else $result = factory.createAssignment(factory.createIndexLiteral($var.start, false), (WasmExpressionNode) body.pop()); }
   | LOCAL_TEE var                                       //{ $result = factory.createTee($LOCAL_TEE, $var.start); } TODO once get/set done - nest
   | GLOBAL_GET var                                      { $result = factory.createRead(factory.createStringLiteral($var.start, false)); }
   | GLOBAL_SET var                                      //{ $result = factory.createAssignment($GLOBAL_SET, $var.start); }
@@ -243,7 +245,7 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?                  { $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
   | MEMORY_SIZE                                         { $result = factory.createMemorySize($MEMORY_SIZE); }
   | MEMORY_GROW                                         { $result = factory.createMemoryGrow($MEMORY_GROW, (WasmExpressionNode) body.pop()); }
-  | CONST literal                                       { $result = factory.createNumericLiteral($CONST, $literal.start); } // TODO handle label case + diff sizes (no exceptions)
+  | CONST literal                                       { $result = factory.createNumericLiteral($CONST, $literal.start); }
   | TEST                                                { $result = factory.createTest($TEST, (WasmExpressionNode) body.pop()); }
   | COMPARE                                             { $result = factory.createCompare($COMPARE, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
   | UNARY                                               { $result = factory.createUnary($UNARY, (WasmExpressionNode) body.pop()); }
@@ -387,7 +389,10 @@ func_fields_body returns [WasmStatementNode result]
   ;
 
 func_result_body returns [WasmStatementNode result]
-  : (LPAR RESULT value_type RPAR)? func_body    { $result = $func_body.result; }
+  : (LPAR RESULT value_type RPAR)?
+    func_body                                   { $result = $func_body.result; }
+                                                //{ // if types match
+                                                  //$result = factory.createReturn($func_body.stop, ); } //(WasmExpressionNode) $result); }
   ; // apparently part of "validation rules" => should I handle this? TODO handle mismatch
   // { -predicate to stop parsing if eval -> false }?
 
@@ -396,7 +401,7 @@ func_body returns [WasmStatementNode result]
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
     (
     LPAR LOCAL
-    value_type*                                 { factory.createAssignment(factory.createIndexLiteral(null), factory.createNumericLiteral($value_type.start, null)); }
+    value_type*                                 { factory.createAssignment(factory.createIndexLiteral(null, false), factory.createNumericLiteral($value_type.start, null)); }
     RPAR
     |
     LPAR LOCAL bind_var value_type RPAR         { factory.createAssignment(factory.createStringLiteral($bind_var.start, false), factory.createNumericLiteral($value_type.start, null)); }

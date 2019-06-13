@@ -120,6 +120,7 @@ public class WasmNodeFactory {
     private String functionName;
     private int functionBodyStartPos; // includes parameter list
     private int parameterCount;
+    private int localCount;
     private FrameDescriptor frameDescriptor;
     private List<WasmStatementNode> methodNodes;
 
@@ -142,6 +143,7 @@ public class WasmNodeFactory {
         assert functionName == null;
         assert functionBodyStartPos == 0;
         assert parameterCount == 0;
+        assert localCount == 0;
         assert frameDescriptor == null;
         assert lexicalScope == null;
 
@@ -162,7 +164,7 @@ public class WasmNodeFactory {
         final WasmReadArgumentNode readArg = new WasmReadArgumentNode(parameterCount);
         WasmExpressionNode assignment;
         if (nameToken == null) {
-            assignment = createAssignment(createIndexLiteral(null), readArg, parameterCount);
+            assignment = createAssignment(createIndexLiteral(null, true), readArg, parameterCount);
         } else {
             assignment = createAssignment(createStringLiteral(nameToken, false), readArg, parameterCount);
         }
@@ -192,6 +194,7 @@ public class WasmNodeFactory {
         functionName = null;
         functionBodyStartPos = 0;
         parameterCount = 0;
+        localCount = 0;
         frameDescriptor = null;
         lexicalScope = null;
     }
@@ -277,7 +280,8 @@ public class WasmNodeFactory {
      */
     public WasmStatementNode createReturn(Token t, WasmExpressionNode valueNode) {
         final int start = t.getStartIndex();
-        final int length = valueNode == null ? t.getText().length() : valueNode.getSourceEndIndex() - start;
+        //final int length = valueNode == null ? t.getText().length() : valueNode.getSourceEndIndex() - start;
+        final int length = t.getText().length();
         final WasmReturnNode returnNode = new WasmReturnNode(valueNode);
         returnNode.setSourceSection(start, length);
         return returnNode;
@@ -766,13 +770,16 @@ public class WasmNodeFactory {
         return result;
     }
 
-    public WasmExpressionNode createIndexLiteral(Token indexToken) {
+    public WasmExpressionNode createIndexLiteral(Token indexToken, boolean fromAddParam) {
         final WasmIndexLiteralNode result;
         if (indexToken == null) {
-            result = new WasmIndexLiteralNode(parameterCount++); // param/local decl
+            result = new WasmIndexLiteralNode(parameterCount + localCount); // param/local decl
         } else {
             result = new WasmIndexLiteralNode(Integer.parseUnsignedInt(indexToken.getText())); // access previously declared param/local
             srcFromToken(result, indexToken);
+        }
+        if (!fromAddParam) { // keep param and local ctrs separate
+            localCount++;
         }
         result.addExpressionTag();
         return result;
