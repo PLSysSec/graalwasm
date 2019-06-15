@@ -79,12 +79,13 @@ import com.oracle.truffle.wasm.nodes.local.WasmReadLocalVariableNode;
 import com.oracle.truffle.wasm.nodes.local.WasmReadLocalVariableNodeGen;
 import com.oracle.truffle.wasm.nodes.local.WasmWriteLocalVariableNode;
 import com.oracle.truffle.wasm.nodes.local.WasmWriteLocalVariableNodeGen;
-import com.oracle.truffle.wasm.nodes.memory.WasmLoadNodeGen;
-import com.oracle.truffle.wasm.nodes.memory.WasmMemoryGrowNodeGen;
-import com.oracle.truffle.wasm.nodes.memory.WasmMemorySizeNodeGen;
-import com.oracle.truffle.wasm.nodes.memory.WasmStoreNodeGen;
+import com.oracle.truffle.wasm.nodes.memory.WasmLoadNode;
+import com.oracle.truffle.wasm.nodes.memory.WasmMemoryGrowNode;
+import com.oracle.truffle.wasm.nodes.memory.WasmMemorySizeNode;
+import com.oracle.truffle.wasm.nodes.memory.WasmStoreNode;
 import com.oracle.truffle.wasm.nodes.parametric.WasmDropNode;
 import com.oracle.truffle.wasm.nodes.parametric.WasmSelectNode;
+import com.oracle.truffle.wasm.runtime.WasmContext;
 import com.oracle.truffle.wasm.nodes.util.WasmUnboxNodeGen;
 
 /**
@@ -114,6 +115,7 @@ public class WasmNodeFactory {
     /* State while parsing a source unit. */
     private final Source source;
     private final Map<String, RootCallTarget> allFunctions;
+    private boolean memoryRegistered = false;
 
     /* State while parsing a function. */
     private int functionStartPos;
@@ -763,7 +765,8 @@ public class WasmNodeFactory {
             result = WasmReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new WasmFunctionLiteralNode(language, name); // FIXME
+            result = new WasmFunctionLiteralNode(language, name); // FIXME how to differentiate between globals
+            // TODO memory can have a global name too.... makes sense to put here?
         }
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();
@@ -903,25 +906,48 @@ public class WasmNodeFactory {
         return result;
     }
 
+    public WasmStatementNode createMemory(Token m, Token name, int min, int max) {
+        final WasmExpressionNode result;
+        if (!memoryRegistered) {
+            String nm = name == null ? "" : name.getText();
+            result = new WasmMemoryLiteralNode(language, nm, min, max);
+            language.getContextReference().get().getMemoryRegistry().register(nm, min, max);
+        } else {
+            throw new RuntimeException("multiple memories cannot be created");
+        }
+        srcFromToken(result, m);
+        return result;
+    }
+
     public WasmExpressionNode createMemorySize(Token s) {
-        final WasmExpressionNode result = WasmMemorySizeNodeGen.create();
+        final WasmExpressionNode result = new WasmMemorySizeNode(language);
         srcFromToken(result, s);
         return result;
     }
 
     public WasmExpressionNode createMemoryGrow(Token g, WasmExpressionNode delta) {
         final WasmExpressionNode deltaUnboxed = WasmUnboxNodeGen.create(delta);
-        final WasmExpressionNode result = WasmMemoryGrowNodeGen.create(deltaUnboxed);
+        final WasmExpressionNode result = new WasmMemoryGrowNode(language, deltaUnboxed);
         srcFromToken(result, g);
         return result;
     }
 
-    public WasmExpressionNode createLoad(Token l, Token offset, Token align) {
-        final WasmExpressionNode result;
+    public WasmExpressionNode createLoad(Token l, Token offset, Token align, WasmExpressionNode index) {
         WasmExpressionNode o = new WasmIntegerLiteralNode(0); // TODO handle diff sizes?
         WasmExpressionNode a = new WasmIntegerLiteralNode(0);
 
-        if (offset == null && align == null) {
+        if (align != null) {
+            a = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(align.getText().substring(6)));
+        }
+        if (offset != null) {
+            o = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(offset.getText().substring(7)));
+        }
+
+        final WasmExpressionNode result = new WasmLoadNode(language, o, a, index);
+        //result.setSourceSection();
+        return result;
+
+        /*if (offset == null && align == null) {
             result = WasmLoadNodeGen.create(o, a);
             srcFromToken(result, l);
         } else if (offset == null) {
@@ -944,11 +970,25 @@ public class WasmNodeFactory {
             int length = align.getStopIndex() - start;
             result.setSourceSection(start, length);
         }
-        return result;
+        result.setSourceSection(start, length);*/
     }
 
-    public WasmExpressionNode createStore(Token s, Token offset, Token align) {
-        final WasmExpressionNode result;
+    public WasmExpressionNode createStore(Token s, Token offset, Token align, WasmExpressionNode value, WasmExpressionNode index) {
+        WasmExpressionNode o = new WasmIntegerLiteralNode(0); // TODO handle diff sizes?
+        WasmExpressionNode a = new WasmIntegerLiteralNode(0);
+
+        if (align != null) {
+            a = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(align.getText().substring(6)));
+        }
+        if (offset != null) {
+            o = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(offset.getText().substring(7)));
+        }
+
+        final WasmExpressionNode result = new WasmStoreNode(language, o, a, value, index);
+        //result.setSourceSection();
+        return result;
+
+        /*final WasmExpressionNode result;
         WasmExpressionNode o = new WasmIntegerLiteralNode(0);
         WasmExpressionNode a = new WasmIntegerLiteralNode(0);
 
@@ -975,7 +1015,7 @@ public class WasmNodeFactory {
             int length = align.getStopIndex() - start;
             result.setSourceSection(start, length);
         }
-        return result;
+        return result;*/
     }
 
     /**

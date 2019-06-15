@@ -101,6 +101,8 @@ public final class WasmContext {
     private final BufferedReader input;
     private final PrintWriter output;
     private final WasmFunctionRegistry functionRegistry;
+    //private final MemoryObject memory;
+    private final WasmMemoryRegistry memoryRegistry;
     private final Shape emptyShape;
     private final WasmLanguage language;
     private final AllocationReporter allocationReporter;
@@ -113,6 +115,7 @@ public final class WasmContext {
         this.language = language;
         this.allocationReporter = env.lookup(AllocationReporter.class);
         this.functionRegistry = new WasmFunctionRegistry(language);
+        this.memoryRegistry = new WasmMemoryRegistry();
         this.topScopes = Collections.singleton(Scope.newBuilder("global", functionRegistry.getFunctionsObject()).build());
         installBuiltins();
         for (NodeFactory<? extends WasmBuiltinNode> builtin : externalBuiltins) {
@@ -150,6 +153,8 @@ public final class WasmContext {
     public WasmFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
     }
+
+    public WasmMemoryRegistry getMemoryRegistry() { return memoryRegistry; }
 
     public Iterable<Scope> getTopScopes() {
         return topScopes;

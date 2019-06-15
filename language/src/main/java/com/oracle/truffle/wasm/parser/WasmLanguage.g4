@@ -190,8 +190,8 @@ table_type
   : NAT NAT? elem_type
   ;
 
-memory_type
-  : NAT NAT?
+memory_type returns [Integer result]
+  : min=NAT max=NAT?                        { $result = Integer.parseUnsignedInt($min.getText()); }
   ;
 
 type_use
@@ -241,8 +241,8 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | LOCAL_TEE var                                       //{ $result = factory.createTee($LOCAL_TEE, $var.start); } TODO once get/set done - nest
   | GLOBAL_GET var                                      { $result = factory.createRead(factory.createStringLiteral($var.start, false)); }
   | GLOBAL_SET var                                      //{ $result = factory.createAssignment($GLOBAL_SET, $var.start); }
-  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?                   { $result = factory.createLoad($LOAD, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
-  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?                  { $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT); }
+  | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?                   { $result = factory.createLoad($LOAD, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT, (WasmExpressionNode) body.pop()); }
+  | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?                  { $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
   | MEMORY_SIZE                                         { $result = factory.createMemorySize($MEMORY_SIZE); }
   | MEMORY_GROW                                         { $result = factory.createMemoryGrow($MEMORY_GROW, (WasmExpressionNode) body.pop()); }
   | CONST literal                                       { $result = factory.createNumericLiteral($CONST, $literal.start); }
@@ -435,12 +435,12 @@ data
   : LPAR DATA var? offset STRING* RPAR
   ;
 
-memory
-  : LPAR MEMORY bind_var? memory_fields RPAR
+memory returns [WasmStatementNode result]
+  : LPAR MEMORY bind_var? memory_fields RPAR        { $result = factory.createMemory($MEMORY, $bind_var.start, $memory_fields.result, -1); }
   ;
 
-memory_fields
-  : memory_type
+memory_fields returns [Integer result]
+  : memory_type                                     { $result = $memory_type.result; }
   | inline_import memory_type
   | inline_export memory_fields
   | LPAR DATA STRING* RPAR
