@@ -61,14 +61,14 @@ public final class MemoryObject implements TruffleObject { // DynamicObject?
      * Sizes are in units of page size.
      */
     private static final int PAGESIZE = 65536;
-    private final String name;
+    //private final String name;
     private int min;
     private int max = -1;
 
     private byte[] memory;
 
-    protected MemoryObject(String name, int min, int max) {
-        this.name = name;
+    protected MemoryObject(int min, int max) {
+        //this.name = name;
         this.min = min * PAGESIZE;
         if (max != -1) this.max = max * PAGESIZE;
         memory = new byte[this.min];

@@ -11,7 +11,7 @@ public final class WasmMemoryRegistry {
     public MemoryObject lookup(String name, int min, int max, boolean createIfNotPresent) {
         MemoryObject result = memoryObject; // disregards params and simply returns existing memory if try to register more... ok behavior?
         if (result == null && createIfNotPresent) {
-            result = new MemoryObject(name, min, max);
+            result = new MemoryObject(min, max);
             memoryObject = result;
         }
         return result;

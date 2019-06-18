@@ -82,6 +82,16 @@ public abstract class WasmBuiltinNode extends WasmExpressionNode {
     }
 
     @Override
+    public final float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeFloat(frame);
+    }
+
+    @Override
+    public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeDouble(frame);
+    }
+
+    @Override
     public final void executeVoid(VirtualFrame frame) {
         super.executeVoid(frame);
     }

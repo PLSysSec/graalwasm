@@ -55,6 +55,10 @@ import java.util.List;
 import java.util.Map;
 
 import java.lang.Integer;
+import java.lang.Boolean;
+
+//import javafx.util.Pair;
+//import org.apache.commons.lang3.tuple.Pair;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.RootCallTarget;
@@ -174,8 +178,9 @@ elem_type
   : FUNCREF
   ;
 
-global_type
-  : value_type | LPAR MUT value_type RPAR
+global_type returns [Boolean result]
+  : value_type                              { $result = new Boolean(false); }
+  | LPAR MUT value_type RPAR                { $result = new Boolean(true); }
   ;
 
 def_type
@@ -233,14 +238,15 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | RETURN                                              { $result = factory.createReturn($RETURN, (WasmExpressionNode) body.pop()); }
   | CALL var                                            { List<WasmExpressionNode> params = new ArrayList<>();
                                                           params.add((WasmExpressionNode) body.pop());
-                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($var.start, false)), params, $var.start); } // TODO num params depends on the function...
-  | LOCAL_GET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false));
-                                                          else $result = factory.createRead(factory.createIndexLiteral($var.start, false)); }
+                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($var.start, false), true), params, $var.start); } // TODO num params depends on the function...
+  | LOCAL_GET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false), false);
+                                                          else $result = factory.createRead(factory.createIndexLiteral($var.start, false), false); }
   | LOCAL_SET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createAssignment(factory.createStringLiteral($var.start, false), (WasmExpressionNode) body.pop());
                                                           else $result = factory.createAssignment(factory.createIndexLiteral($var.start, false), (WasmExpressionNode) body.pop()); }
   | LOCAL_TEE var                                       //{ $result = factory.createTee($LOCAL_TEE, $var.start); } TODO once get/set done - nest
-  | GLOBAL_GET var                                      { $result = factory.createRead(factory.createStringLiteral($var.start, false)); }
-  | GLOBAL_SET var                                      //{ $result = factory.createAssignment($GLOBAL_SET, $var.start); }
+  | GLOBAL_GET var                                      { $result = factory.createRead(factory.createStringLiteral($var.start, false), false); }
+  | GLOBAL_SET var                                      { if ($var.start.getText().charAt(0) == '$') $result = factory.createWrite(factory.createStringLiteral($var.start, false), (WasmExpressionNode) body.pop());
+                                                          else $result = factory.createWrite(factory.createIndexLiteral($var.start, false), (WasmExpressionNode) body.pop()); }
   | LOAD OFFSET_EQ_NAT? ALIGN_EQ_NAT?                   { $result = factory.createLoad($LOAD, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT, (WasmExpressionNode) body.pop()); }
   | STORE OFFSET_EQ_NAT? ALIGN_EQ_NAT?                  { $result = factory.createStore($STORE, $OFFSET_EQ_NAT, $ALIGN_EQ_NAT, (WasmExpressionNode) body.pop(), (WasmExpressionNode) body.pop()); }
   | MEMORY_SIZE                                         { $result = factory.createMemorySize($MEMORY_SIZE); }
@@ -343,8 +349,13 @@ instr_list [Stack<WasmStatementNode> body] returns [Stack<WasmStatementNode> res
                                                 { $result = body; }
   ;
 
-const_expr // TODO
-  : instr_list[null]
+const_expr returns [WasmStatementNode result]
+  :                                             { factory.startBlock();
+                                                  Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
+    //res=instr_list[body]                        { $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
+    res=instr_list[body]                        { /* token.start and token.stop switched due to stack */
+                                                  $result = (WasmExpressionNode) body.pop();
+                                                  factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
   ;
 
 /* Functions */
@@ -446,12 +457,15 @@ memory_fields returns [Integer result]
   | LPAR DATA STRING* RPAR
   ;
 
-sglobal
-  : LPAR GLOBAL bind_var? global_fields RPAR
+sglobal returns [WasmStatementNode result]
+  : LPAR GLOBAL bind_var? global_fields RPAR        { $result = factory.createGlobal($GLOBAL, $bind_var.start, (WasmExpressionNode) $global_fields.result_val, $global_fields.result_mut); }
+  //{ $result = $global_field.result; }
   ;
 
-global_fields
-  : global_type const_expr
+global_fields returns [WasmStatementNode result_val, boolean result_mut]
+  : global_type const_expr                          { $result_val = $const_expr.result;
+                                                      $result_mut = $global_type.result; }
+  //{ $result = new Pair<WasmStatementNode, Boolean>($const_expr.result, $global_type.mutable); }
   | inline_import global_type
   | inline_export global_fields
   ;

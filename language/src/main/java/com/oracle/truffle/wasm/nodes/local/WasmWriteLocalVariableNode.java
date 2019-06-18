@@ -128,4 +128,4 @@ public abstract class WasmWriteLocalVariableNode extends WasmExpressionNode {
         final FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(getSlot());
         return kind == FrameSlotKind.Boolean || kind == FrameSlotKind.Illegal;
     }
-}
+} // TODO operations for reading/writing floats/doubles?

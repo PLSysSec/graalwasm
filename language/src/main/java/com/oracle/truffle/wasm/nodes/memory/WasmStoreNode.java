@@ -35,26 +35,21 @@ public final class WasmStoreNode extends WasmExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         executeVoid(frame);
-        return null; // TODO
+        return null; // FIXME
     }
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        //Byte result;
         int idx;
         byte val;
         try {
             idx = index.executeInt(frame);
-            val = (byte) value.executeInt(frame);
+            val = (byte) value.executeInt(frame); // TODO little endian
             reference.get().getMemoryRegistry().getMemoryObject().writeElement(idx, val);
-            //result = Byte.valueOf(reference.get().getMemoryRegistry().getMemoryObject().readElement(idx));
         } catch (UnexpectedResultException e) {
             System.out.println("unexpected exception: cannot read the operand value(s) (index and/or value) of store operation");
-            //result = null;
         } catch (InvalidArrayIndexException e) {
             System.out.println("invalid array index: attempted in store operation");
-            //result = null;
         }
-        //return result;
     }
 }
