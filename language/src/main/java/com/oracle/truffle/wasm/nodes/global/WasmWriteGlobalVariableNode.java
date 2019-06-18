@@ -11,10 +11,13 @@ import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 import com.oracle.truffle.wasm.runtime.WasmContext;
 import com.oracle.truffle.wasm.runtime.WasmGlobal;
 
+import java.lang.Integer;
+
 @NodeInfo(shortName = "global_write")
 public final class WasmWriteGlobalVariableNode extends WasmExpressionNode {
 
     private final String globalName;
+    private final Integer globalIndex;
     private final WasmExpressionNode value;
 
     @CompilerDirectives.CompilationFinal
@@ -22,10 +25,15 @@ public final class WasmWriteGlobalVariableNode extends WasmExpressionNode {
 
     private final TruffleLanguage.ContextReference<WasmContext> reference;
 
-    public WasmWriteGlobalVariableNode(WasmLanguage language, String globalName, WasmExpressionNode value) {
-        this.globalName = globalName;
-        this.value = value;
+    public WasmWriteGlobalVariableNode(WasmLanguage language, String globalName, Integer globalIndex, WasmExpressionNode value) {
         reference = language.getContextReference();
+        this.globalName = globalName;
+        if (globalIndex == null) {
+            this.globalIndex = reference.get().getGlobalsRegistry().getIndex(globalName);
+        } else {
+            this.globalIndex = globalIndex;
+        }
+        this.value = value;
     }
 
     @Override
@@ -36,6 +44,6 @@ public final class WasmWriteGlobalVariableNode extends WasmExpressionNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) { // TODO how does caching work when you're writing... maybe try reading first? which is more expensive? maybe can see if the read node has a cached value?
-        reference.get().getGlobalsRegistry().setValue(globalName, value);
+        reference.get().getGlobalsRegistry().setValue(globalName, globalIndex, value);
     }
 }

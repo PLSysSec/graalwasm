@@ -11,6 +11,8 @@ import com.oracle.truffle.wasm.runtime.MemoryObject;
 import com.oracle.truffle.wasm.runtime.WasmContext;
 import com.oracle.truffle.wasm.runtime.WasmGlobal;
 
+import java.lang.Integer;
+
 public final class WasmGlobalLiteralNode extends WasmExpressionNode {
 
     /**
@@ -25,12 +27,14 @@ public final class WasmGlobalLiteralNode extends WasmExpressionNode {
     private final TruffleLanguage.ContextReference<WasmContext> reference;
 
     private String name;
+    private Integer index;
     private WasmExpressionNode value;
     private boolean mutable;
 
-    public WasmGlobalLiteralNode(WasmLanguage language, String name, WasmExpressionNode value, boolean mutable) {
+    public WasmGlobalLiteralNode(WasmLanguage language, String name, Integer index, WasmExpressionNode value, boolean mutable) {
         this.reference = language.getContextReference();
         this.name = name;
+        this.index = index;
         this.value = value;
         this.mutable = mutable;
     }
@@ -41,7 +45,7 @@ public final class WasmGlobalLiteralNode extends WasmExpressionNode {
             /* We are about to change a @CompilationFinal field. */
             CompilerDirectives.transferToInterpreterAndInvalidate();
             /* First execution of the node: lookup the global in the global registry. */
-            cachedGlobal = reference.get().getGlobalsRegistry().lookup(name, value, mutable, false);
+            cachedGlobal = reference.get().getGlobalsRegistry().lookup(name, index, value, mutable, false);
         }
         return cachedGlobal;
     }

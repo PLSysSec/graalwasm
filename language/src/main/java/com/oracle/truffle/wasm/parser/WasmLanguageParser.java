@@ -1105,7 +1105,7 @@ public class WasmLanguageParser extends Parser {
 				setState(238);
 				((Plain_instrContext)_localctx).var = var();
 				 if ((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null).getText().charAt(0) == '$') ((Plain_instrContext)_localctx).result =  factory.createRead(factory.createStringLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), false);
-				                                                          else ((Plain_instrContext)_localctx).result =  factory.createRead(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), false); 
+				                                                          else ((Plain_instrContext)_localctx).result =  factory.createRead(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false, false), false); 
 				}
 				break;
 			case LOCAL_SET:
@@ -1116,7 +1116,7 @@ public class WasmLanguageParser extends Parser {
 				setState(242);
 				((Plain_instrContext)_localctx).var = var();
 				 if ((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null).getText().charAt(0) == '$') ((Plain_instrContext)_localctx).result =  factory.createAssignment(factory.createStringLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), (WasmExpressionNode) body.pop());
-				                                                          else ((Plain_instrContext)_localctx).result =  factory.createAssignment(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), (WasmExpressionNode) body.pop()); 
+				                                                          else ((Plain_instrContext)_localctx).result =  factory.createAssignment(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false, false), (WasmExpressionNode) body.pop()); 
 				}
 				break;
 			case LOCAL_TEE:
@@ -1135,7 +1135,8 @@ public class WasmLanguageParser extends Parser {
 				match(GLOBAL_GET);
 				setState(248);
 				((Plain_instrContext)_localctx).var = var();
-				 ((Plain_instrContext)_localctx).result =  factory.createRead(factory.createStringLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), false); 
+				 if ((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null).getText().charAt(0) == '$') ((Plain_instrContext)_localctx).result =  factory.createRead(factory.createStringLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), false);
+				                                                          else ((Plain_instrContext)_localctx).result =  factory.createRead(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false, true), false);
 				}
 				break;
 			case GLOBAL_SET:
@@ -1146,7 +1147,7 @@ public class WasmLanguageParser extends Parser {
 				setState(252);
 				((Plain_instrContext)_localctx).var = var();
 				 if ((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null).getText().charAt(0) == '$') ((Plain_instrContext)_localctx).result =  factory.createWrite(factory.createStringLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), (WasmExpressionNode) body.pop());
-				                                                          else ((Plain_instrContext)_localctx).result =  factory.createWrite(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), (WasmExpressionNode) body.pop()); 
+				                                                          else ((Plain_instrContext)_localctx).result =  factory.createWrite(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false, true), (WasmExpressionNode) body.pop()); 
 				}
 				break;
 			case LOAD:
@@ -2030,8 +2031,7 @@ public class WasmLanguageParser extends Parser {
 			                                                  Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); 
 			setState(427);
 			((Const_exprContext)_localctx).res = instr_list(body);
-			 /* token.start and token.stop switched due to stack */
-			                                                  ((Const_exprContext)_localctx).result =  (WasmExpressionNode) body.pop();
+			 ((Const_exprContext)_localctx).result =  (WasmExpressionNode) body.pop();
 			                                                  factory.finishBlock(new ArrayList(((Const_exprContext)_localctx).res.result), (((Const_exprContext)_localctx).res!=null?(((Const_exprContext)_localctx).res.start):null).getStartIndex(), (((Const_exprContext)_localctx).res!=null?(((Const_exprContext)_localctx).res.stop):null).getStopIndex() - (((Const_exprContext)_localctx).res!=null?(((Const_exprContext)_localctx).res.start):null).getStartIndex() + 1); 
 			}
 		}
@@ -2615,7 +2615,7 @@ public class WasmLanguageParser extends Parser {
 						_errHandler.sync(this);
 						_la = _input.LA(1);
 					}
-					 factory.createAssignment(factory.createIndexLiteral(null, false), factory.createNumericLiteral((((Func_bodyContext)_localctx).value_type!=null?(((Func_bodyContext)_localctx).value_type.start):null), null)); 
+					 factory.createAssignment(factory.createIndexLiteral(null, false, false), factory.createNumericLiteral((((Func_bodyContext)_localctx).value_type!=null?(((Func_bodyContext)_localctx).value_type.start):null), null)); 
 					setState(538);
 					match(RPAR);
 					}
@@ -3202,7 +3202,8 @@ public class WasmLanguageParser extends Parser {
 			((SglobalContext)_localctx).global_fields = global_fields();
 			setState(650);
 			match(RPAR);
-			 ((SglobalContext)_localctx).result =  factory.createGlobal(((SglobalContext)_localctx).GLOBAL, (((SglobalContext)_localctx).bind_var!=null?(((SglobalContext)_localctx).bind_var.start):null), (WasmExpressionNode) ((SglobalContext)_localctx).global_fields.result_val, ((SglobalContext)_localctx).global_fields.result_mut); 
+			 if ((((SglobalContext)_localctx).bind_var!=null?(((SglobalContext)_localctx).bind_var.start):null) == null) ((SglobalContext)_localctx).result =  factory.createGlobal(((SglobalContext)_localctx).GLOBAL, null, (WasmExpressionNode) ((SglobalContext)_localctx).global_fields.result_val, ((SglobalContext)_localctx).global_fields.result_mut);
+			                                                      else ((SglobalContext)_localctx).result =  factory.createGlobal(((SglobalContext)_localctx).GLOBAL, (((SglobalContext)_localctx).bind_var!=null?(((SglobalContext)_localctx).bind_var.start):null), (WasmExpressionNode) ((SglobalContext)_localctx).global_fields.result_val, ((SglobalContext)_localctx).global_fields.result_mut); 
 			}
 		}
 		catch (RecognitionException re) {

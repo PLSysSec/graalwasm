@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltin;
 import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltinFactory;
 import com.oracle.truffle.wasm.nodes.expression.*;
@@ -125,6 +126,7 @@ public class WasmNodeFactory {
     private int functionBodyStartPos; // includes parameter list
     private int parameterCount;
     private int localCount;
+    private int globalCount = 0;
     private FrameDescriptor frameDescriptor;
     private List<WasmStatementNode> methodNodes;
 
@@ -168,7 +170,7 @@ public class WasmNodeFactory {
         final WasmReadArgumentNode readArg = new WasmReadArgumentNode(parameterCount);
         WasmExpressionNode assignment;
         if (nameToken == null) {
-            assignment = createAssignment(createIndexLiteral(null, true), readArg, parameterCount);
+            assignment = createAssignment(createIndexLiteral(null, true, false), readArg, parameterCount);
         } else {
             assignment = createAssignment(createStringLiteral(nameToken, false), readArg, parameterCount);
         }
@@ -754,22 +756,26 @@ public class WasmNodeFactory {
             return null;
         }
 
-        String name;
+        String name = null;
+        Integer index = null;
         if (nameNode instanceof WasmIndexLiteralNode) {
-            name = ((WasmIndexLiteralNode) nameNode).executeGeneric(null).toString();
+            index = ((WasmIndexLiteralNode) nameNode).executeGeneric(null);
         } else {
             name = ((WasmStringLiteralNode) nameNode).executeGeneric(null);
         }
         final WasmExpressionNode result;
-        final FrameSlot frameSlot = lexicalScope.locals.get(name);
+        final FrameSlot frameSlot = lexicalScope.locals.get(name); // TODO what if local does not have a name..?
         if (frameSlot != null) {
             /* Read of a local variable. */
             result = WasmReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            if (function) result = new WasmFunctionLiteralNode(language, name); // FIXME how to differentiate between globals
-            else result = new WasmReadGlobalVariableNode(language, name);
-            // TODO memory can have a global name too.... makes sense to put here?
+            if (function) {
+                result = new WasmFunctionLiteralNode(language, name);
+            }
+            else {
+                result = new WasmReadGlobalVariableNode(language, name, index);
+            }
         }
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();
@@ -781,29 +787,42 @@ public class WasmNodeFactory {
             return nameNode;
         }
 
-        String name;
+        String name = null;
+        Integer index = null;
         if (nameNode instanceof WasmIndexLiteralNode) {
-            name = ((WasmIndexLiteralNode) nameNode).executeGeneric(null).toString();
+            index = ((WasmIndexLiteralNode) nameNode).executeGeneric(null);
         } else {
             name = ((WasmStringLiteralNode) nameNode).executeGeneric(null);
         }
-        final WasmExpressionNode result = new WasmWriteGlobalVariableNode(language, name, valueNode);
+        final WasmExpressionNode result = new WasmWriteGlobalVariableNode(language, name, index, valueNode);
         result.setSourceSection(valueNode.getSourceCharIndex(), nameNode.getSourceEndIndex() - valueNode.getSourceCharIndex() + 1);
         result.addExpressionTag();
         return result;
     }
 
-    public WasmExpressionNode createIndexLiteral(Token indexToken, boolean fromAddParam) {
+    public WasmExpressionNode createIndexLiteral(Token indexToken, boolean fromAddParam, boolean fromGlobal) {
         final WasmIndexLiteralNode result;
-        if (indexToken == null) {
-            result = new WasmIndexLiteralNode(parameterCount + localCount); // param/local decl
+        if (fromGlobal) {
+            if (indexToken == null) {
+                result = new WasmIndexLiteralNode(globalCount); // newly decl global
+            } else {
+                result = new WasmIndexLiteralNode(Integer.parseUnsignedInt(indexToken.getText())); // access previously declared global
+                srcFromToken(result, indexToken);
+            }
         } else {
-            result = new WasmIndexLiteralNode(Integer.parseUnsignedInt(indexToken.getText())); // access previously declared param/local
-            srcFromToken(result, indexToken);
+            if (indexToken == null) {
+                result = new WasmIndexLiteralNode(parameterCount + localCount); // newly decl param/local
+            } else {
+                result = new WasmIndexLiteralNode(Integer.parseUnsignedInt(indexToken.getText())); // access previously declared param/local
+                srcFromToken(result, indexToken);
+            }
         }
-        if (!fromAddParam) { // keep param and local ctrs separate
+        // keep counters for params + locals + globals separate
+        /*if (fromGlobal) {
+            globalCount++;
+        } else */if (!fromAddParam) { // parameter counter handled elsewhere
             localCount++;
-        } // also have separate counter for globals :)
+        }
         result.addExpressionTag();
         return result;
     }
@@ -928,9 +947,24 @@ public class WasmNodeFactory {
 
     public WasmStatementNode createGlobal(Token g, Token name, WasmExpressionNode value, boolean mutable) {
         final WasmExpressionNode result;
-        String nm = name == null ? "" : name.getText();
-        result = new WasmGlobalLiteralNode(language, nm, value, mutable);
-        language.getContextReference().get().getGlobalsRegistry().register(nm, value, mutable);
+        WasmExpressionNode index = createIndexLiteral(null, false, true);
+        globalCount++;
+        Integer idx;
+        try {
+            idx = new Integer(index.executeInt(null));
+        } catch (UnexpectedResultException e) {
+            System.out.println("unexpected result: could not resolve index of global");
+            return null;
+        }
+        String nm;
+        if (name == null) {
+            nm = null;
+        } else {
+            nm = name.getText();
+        }
+        //String nm = name == null ? "" : name.getText();
+        result = new WasmGlobalLiteralNode(language, nm, idx, value, mutable);
+        language.getContextReference().get().getGlobalsRegistry().register(nm, idx, value, mutable);
         srcFromToken(result, g);
         return result;
     }

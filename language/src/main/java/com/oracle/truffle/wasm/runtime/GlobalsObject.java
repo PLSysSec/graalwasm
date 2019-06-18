@@ -16,9 +16,7 @@ import java.util.Map;
 @SuppressWarnings("static-method")
 public final class GlobalsObject implements TruffleObject {
 
-    //private boolean mutable = false;
-
-    final Map<String, WasmGlobal> globals = new HashMap<>();
+    final Map<Integer, WasmGlobal> globals = new HashMap<>();
 
     GlobalsObject() {}
 
@@ -32,12 +30,6 @@ public final class GlobalsObject implements TruffleObject {
     Object readMember(String member) {
         return globals.get(member);
     }
-
-    /*@ExportMessage
-    @CompilerDirectives.TruffleBoundary
-    void writeMember(String member, WasmGlobal value) {
-        return globals.put(member, value);
-    }*/
 
     @ExportMessage
     @CompilerDirectives.TruffleBoundary

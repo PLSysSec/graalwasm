@@ -14,14 +14,21 @@ public final class WasmReadGlobalVariableNode extends WasmExpressionNode {
 
     private final String globalName;
 
+    private final Integer globalIndex;
+
     @CompilerDirectives.CompilationFinal
     private WasmGlobal cachedGlobal;
 
     private final TruffleLanguage.ContextReference<WasmContext> reference;
 
-    public WasmReadGlobalVariableNode(WasmLanguage language, String globalName) {
-        this.globalName = globalName;
+    public WasmReadGlobalVariableNode(WasmLanguage language, String globalName, Integer globalIndex) {
         reference = language.getContextReference();
+        this.globalName = globalName;
+        if (globalIndex == null) {
+            this.globalIndex = reference.get().getGlobalsRegistry().getIndex(globalName);
+        } else {
+            this.globalIndex = globalIndex;
+        }
     }
 
     @Override
@@ -29,8 +36,8 @@ public final class WasmReadGlobalVariableNode extends WasmExpressionNode {
         if (cachedGlobal == null) {
             /* We are about to change a @CompilationFinal field. */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            /* First execution of the node: lookup the function in the function registry. */
-            cachedGlobal = reference.get().getGlobalsRegistry().lookup(globalName, null,false, false);
+            /* First execution of the node: lookup the global in the global registry. */
+            cachedGlobal = reference.get().getGlobalsRegistry().lookup(globalName, globalIndex, null, false, false);
         }
         return cachedGlobal;
     }
