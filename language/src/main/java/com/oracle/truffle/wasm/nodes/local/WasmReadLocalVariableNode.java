@@ -69,7 +69,7 @@ public abstract class WasmReadLocalVariableNode extends WasmExpressionNode {
     protected abstract FrameSlot getSlot();
 
     @Specialization(guards = "isLong(frame)")
-    protected long readLong(VirtualFrame frame) {
+    protected long readLong(VirtualFrame frame) { // TODO what about other types??
         /*
          * When the FrameSlotKind is Long, we know that only primitive long values have ever been
          * written to the local variable. So we do not need to check that the frame really contains
