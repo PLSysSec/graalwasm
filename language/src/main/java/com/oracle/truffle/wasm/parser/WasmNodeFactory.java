@@ -285,7 +285,6 @@ public class WasmNodeFactory {
      */
     public WasmStatementNode createReturn(Token t, WasmExpressionNode valueNode) {
         final int start = t.getStartIndex();
-        //final int length = valueNode == null ? t.getText().length() : valueNode.getSourceEndIndex() - start;
         final int length = t.getText().length();
         final WasmReturnNode returnNode = new WasmReturnNode(valueNode);
         returnNode.setSourceSection(start, length);
@@ -299,14 +298,6 @@ public class WasmNodeFactory {
         srcFromToken(printNode, t);
         return printNode;
     }
-
-    /*public WasmStatementNode createBranch(Token t, Token var) { // TODO might need more info (from stack) to differentiate break v cont
-        if (var.charAt(0) == '$') { // resolve index/label
-
-        } else {
-
-        }
-    }*/
 
     /**
      * Returns an {@link WasmBreakNode} for the given token.
@@ -536,25 +527,22 @@ public class WasmNodeFactory {
                 result = WasmRemUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "and":
-                //result = new WasmLogicalAndNode(leftUnboxed, rightUnboxed);
                 result = WasmBitwiseAndNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "or":
-                //result = new WasmLogicalOrNode(leftUnboxed, rightUnboxed);
                 result = WasmBitwiseOrNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "xor":
-                //result = new WasmLogicalOrNode(new WasmLogicalAndNode(leftUnboxed, WasmLogicalNotNodeGen.create(rightUnboxed)), new WasmLogicalAndNode(WasmLogicalNotNodeGen.create(leftUnboxed), rightUnboxed));
                 result = WasmBitwiseXorNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "shl":
                 result = WasmShiftLeftNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "shr_s":
-                result = WasmShiftRightSignedNodeGen.create(leftUnboxed, rightUnboxed);//, true);
+                result = WasmShiftRightSignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "shr_u":
-                result = WasmShiftRightUnsignedNodeGen.create(leftUnboxed, rightUnboxed);//, false);
+                result = WasmShiftRightUnsignedNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "rotl":
                 result = WasmRotateLeftNodeGen.create(leftUnboxed, rightUnboxed);
@@ -714,7 +702,7 @@ public class WasmNodeFactory {
             return null;
         }
 
-        String name = null;
+        String name;
         Integer index;
         if (nameNode instanceof WasmIndexLiteralNode) {
             index = ((WasmIndexLiteralNode) nameNode).executeGeneric(null);
@@ -751,7 +739,6 @@ public class WasmNodeFactory {
             System.out.println("unexpected result: could not resolve index of local");
             return null;
         }
-        //String nm = name == null ? null : name.getText();
         if (name != null) lexicalScope.indices.put(name.getText(), idx);
 
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(
@@ -760,8 +747,6 @@ public class WasmNodeFactory {
                 FrameSlotKind.Illegal);
         lexicalScope.locals.put(idx, frameSlot);
         final WasmExpressionNode result = WasmWriteLocalVariableNodeGen.create(value, frameSlot);
-        //result = new WasmGlobalLiteralNode(language, nm, idx, value, mutable);
-        //language.getContextReference().get().getGlobalsRegistry().register(nm, idx, value, mutable);
         srcFromToken(result, l);
         return result;
     }
@@ -784,7 +769,7 @@ public class WasmNodeFactory {
             return null;
         }
 
-        String name = null;
+        String name = null; // TODO functions should rely on indices too
         Integer index = null;
         if (nameNode instanceof WasmIndexLiteralNode) {
             index = ((WasmIndexLiteralNode) nameNode).executeGeneric(null);
@@ -889,27 +874,22 @@ public class WasmNodeFactory {
         } else {
             value = literalToken.getText();
         }
-        //try {
-            switch (opToken.getText().substring(0, 3)) {
-                case "i32":
-                    result = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(value)); // TODO is decode better? parses as unsigned.... but handles hex
-                    break;
-                case "i64":
-                    result = new WasmLongLiteralNode(Long.parseUnsignedLong(value));
-                    break;
-                case "f32":
-                    result = new WasmFloatLiteralNode(Float.parseFloat(value));
-                    break;
-                case "f64":
-                    result = new WasmDoubleLiteralNode(Double.parseDouble(value));
-                    break;
-                default:
-                    throw new RuntimeException("unexpected type: " + opToken.getText().substring(0, 3));
+        switch (opToken.getText().substring(0, 3)) {
+            case "i32":
+                result = new WasmIntegerLiteralNode(Integer.parseUnsignedInt(value)); // TODO is decode better? parses as unsigned.... but handles hex
+                break;
+            case "i64":
+                result = new WasmLongLiteralNode(Long.parseUnsignedLong(value));
+                break;
+            case "f32":
+                result = new WasmFloatLiteralNode(Float.parseFloat(value));
+                break;
+            case "f64":
+                result = new WasmDoubleLiteralNode(Double.parseDouble(value));
+                break;
+            default:
+                throw new RuntimeException("unexpected type: " + opToken.getText().substring(0, 3));
             }
-        /*} catch (NumberFormatException ex) {
-            System.out.println("NumberFormatException for " + opToken.getText() + " " + literalToken.getText() + ": " + ex.getMessage());
-            result = null;
-        }*/
         if (literalToken != null) {
             srcFromToken(result, literalToken);
         }
@@ -978,6 +958,7 @@ public class WasmNodeFactory {
         final WasmExpressionNode result;
         WasmExpressionNode index = createIndexLiteral(null, true);
         globalCount++;
+
         Integer idx;
         try {
             idx = new Integer(index.executeInt(null));
@@ -985,15 +966,18 @@ public class WasmNodeFactory {
             System.out.println("unexpected result: could not resolve index of global");
             return null;
         }
+
         String nm = name == null ? null : name.getText();
         result = new WasmGlobalLiteralNode(language, nm, idx, value, mutable);
         language.getContextReference().get().getGlobalsRegistry().register(nm, idx, value, mutable);
         srcFromToken(result, g);
+
         return result;
     }
 
     public WasmStatementNode createMemory(Token m, Token name, int min, int max) {
         final WasmExpressionNode result;
+
         if (!memoryRegistered) {
             String nm = name == null ? "" : name.getText();
             result = new WasmMemoryLiteralNode(language, nm, min, max);
@@ -1001,6 +985,7 @@ public class WasmNodeFactory {
         } else {
             throw new RuntimeException("multiple memories cannot be created");
         }
+
         srcFromToken(result, m);
         return result;
     }
@@ -1030,7 +1015,6 @@ public class WasmNodeFactory {
         }
 
         final WasmExpressionNode result = new WasmLoadNode(language, o, a, index);
-        //result.setSourceSection();
         return result;
     }
 
@@ -1046,7 +1030,6 @@ public class WasmNodeFactory {
         }
 
         final WasmExpressionNode result = new WasmStoreNode(language, o, a, value, index);
-        //result.setSourceSection();
         return result;
     }
 
@@ -1068,5 +1051,4 @@ public class WasmNodeFactory {
         }
         return false;
     }
-
 }

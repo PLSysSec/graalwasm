@@ -245,13 +245,9 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
                                                           else $result = factory.createAssignment(factory.createIndexLiteral($var.start, false), (WasmExpressionNode) body.pop()); }
   | LOCAL_TEE var                                       { if ($var.start.getText().charAt(0) == '$') {
                                                             WasmExpressionNode str = factory.createStringLiteral($var.start, false);
-                                                            /*$result = factory.createAssignment(str, (WasmExpressionNode) body.pop());
-                                                            $result = factory.createRead(str, false);*/
                                                             $result = factory.createTee(str, (WasmExpressionNode) body.pop());
                                                           } else {
                                                             WasmExpressionNode idx = factory.createIndexLiteral($var.start, false);
-                                                            /*$result = factory.createAssignment(idx, (WasmExpressionNode) body.pop());
-                                                            $result = factory.createRead(idx, false);*/
                                                             $result = factory.createTee(idx, (WasmExpressionNode) body.pop());
                                                           } }
   | GLOBAL_GET var                                      { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false), false);
