@@ -57,9 +57,6 @@ import java.util.Map;
 import java.lang.Integer;
 import java.lang.Boolean;
 
-//import javafx.util.Pair;
-//import org.apache.commons.lang3.tuple.Pair;
-
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.wasm.WasmLanguage;
@@ -104,7 +101,7 @@ private static void throwParseError(Source source, int line, int charPositionInL
     throw new WasmParseError(source, line, col, length, String.format("Error(s) parsing script:%n" + location + message));
 }
 
-public static Map<String, RootCallTarget> parseWasm(WasmLanguage language, Source source) {
+public static Map<Integer, RootCallTarget> parseWasm(WasmLanguage language, Source source) {
     WasmLanguageLexer lexer = new WasmLanguageLexer(CharStreams.fromString(source.getCharacters().toString()));
     WasmLanguageParser parser = new WasmLanguageParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();
@@ -236,9 +233,12 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | BR_IF var                                           //{ $result = factory.createBranch($BR_IF, $var.start); } TODO what does this look like in stack notation?
   | BR_TABLE var+                                       //{ $result = factory.createBranch($BR_TABLE, $var.start); } TODO how to handle 'var+' ? include index too? and what about default?
   | RETURN                                              { $result = factory.createReturn($RETURN, (WasmExpressionNode) body.pop()); }
-  | CALL var                                            { List<WasmExpressionNode> params = new ArrayList<>();
-                                                          params.add((WasmExpressionNode) body.pop());
-                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($var.start, false), true), params, $var.start); } // TODO num params depends on the function...
+  | CALL VAR                                            { List<WasmExpressionNode> params = new ArrayList<>();
+                                                          params.add((WasmExpressionNode) body.pop()); // FIXME only works w one arg atm
+                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($VAR, false), true), params, $VAR); } // TODO num params depends on the function...
+  | CALL NAT                                            { List<WasmExpressionNode> params = new ArrayList<>();
+                                                            params.add((WasmExpressionNode) body.pop()); // FIXME only works w one arg atm
+                                                            $result = factory.createCall(factory.createRead(factory.createIndexLiteral($NAT, false), true), params, $NAT); } // TODO num params depends on the function...
   | LOCAL_GET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false), false);
                                                           else $result = factory.createRead(factory.createIndexLiteral($var.start, false), false); }
   | LOCAL_SET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createAssignment(factory.createStringLiteral($var.start, false), (WasmExpressionNode) body.pop());
@@ -359,7 +359,6 @@ instr_list [Stack<WasmStatementNode> body] returns [Stack<WasmStatementNode> res
 const_expr returns [WasmStatementNode result]
   :                                             { factory.startBlock();
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
-    //res=instr_list[body]                        { $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
     res=instr_list[body]                        { $result = (WasmExpressionNode) body.pop();
                                                   factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
   ;
@@ -397,10 +396,10 @@ func_fields_body returns [WasmStatementNode result]
   : (
     LPAR PARAM
     value_type*                                 { factory.addFormalParameter(null); }
-    RPAR                 //{ factory.addFormalParameter(Integer.toString(numlocals++)); }
+    RPAR
     |
     LPAR PARAM VAR value_type RPAR              { factory.addFormalParameter($VAR); }
-                                                  //factory.addFormalParameter(Integer.toString(numlocals++)); } // TODO so can ref w both name AND index?
+                                                  // TODO add arity counter + map strings to indices (locals)
     )*
     func_result_body                            { $result = $func_result_body.result; }
   ;
@@ -418,10 +417,10 @@ func_body returns [WasmStatementNode result]
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
     (
     LPAR LOCAL
-    value_type*                                 { factory.createLocal($LOCAL, null, $value_type.start); }//{ factory.createAssignment(factory.createIndexLiteral(null, false, false), factory.createNumericLiteral($value_type.start, null)); }
+    value_type*                                 { factory.createLocal($LOCAL, null, $value_type.start); }
     RPAR
     |
-    LPAR LOCAL bind_var value_type RPAR         { factory.createLocal($LOCAL, $bind_var.start, $value_type.start); }//{ factory.createAssignment(factory.createStringLiteral($bind_var.start, false), factory.createNumericLiteral($value_type.start, null)); }
+    LPAR LOCAL bind_var value_type RPAR         { factory.createLocal($LOCAL, $bind_var.start, $value_type.start); }
     )*
     res=instr_list[body]                        { $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
   ;
@@ -471,7 +470,6 @@ sglobal returns [WasmStatementNode result]
 global_fields returns [WasmStatementNode result_val, boolean result_mut]
   : global_type const_expr                          { $result_val = $const_expr.result;
                                                       $result_mut = $global_type.result; }
-  //{ $result = new Pair<WasmStatementNode, Boolean>($const_expr.result, $global_type.mutable); }
   | inline_import global_type
   | inline_export global_fields
   ;

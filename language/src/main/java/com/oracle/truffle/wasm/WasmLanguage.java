@@ -209,7 +209,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        Map<String, RootCallTarget> functions;
+        Map<Integer, RootCallTarget> functions;
         /*
          * Parse the provided source. At this point, we do not have a WasmContext yet. Registration of
          * the functions with the WasmContext happens lazily in WasmEvalRootNode.
@@ -234,7 +234,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             functions = WasmLanguageParser.parseWasm(this, decoratedSource);
         }
 
-        RootCallTarget main = functions.get("$main");
+        RootCallTarget main = functions.get(0); //"$main");
         RootNode evalMain;
         if (main != null) {
             /*
@@ -261,7 +261,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @SuppressWarnings("deprecation")
     @Override
     protected Object findExportedSymbol(WasmContext context, String globalName, boolean onlyExplicit) {
-        return context.getFunctionRegistry().lookup(globalName, false);
+        return context.getFunctionRegistry().lookup(globalName, null, false);
     }
 
     @Override

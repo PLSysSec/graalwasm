@@ -116,16 +116,19 @@ public class WasmNodeFactory {
 
     /* State while parsing a source unit. */
     private final Source source;
-    private final Map<String, RootCallTarget> allFunctions;
+    private final Map<Integer, RootCallTarget> allFunctions;
+    private final Map<String, Integer> indices;
     private boolean memoryRegistered = false;
 
     /* State while parsing a function. */
     private int functionStartPos;
     private String functionName;
+    private Integer functionIndex;
     private int functionBodyStartPos; // includes parameter list
     private int parameterCount;
     private int localCount;
     private int globalCount = 0;
+    private int functionCount = 0; // FIXME was 14... is there a fxnl difference?
     private FrameDescriptor frameDescriptor;
     private List<WasmStatementNode> methodNodes;
 
@@ -137,9 +140,10 @@ public class WasmNodeFactory {
         this.language = language;
         this.source = source;
         this.allFunctions = new HashMap<>();
+        this.indices = new HashMap<>();
     }
 
-    public Map<String, RootCallTarget> getAllFunctions() {
+    public Map<Integer, RootCallTarget> getAllFunctions() {
         return allFunctions;
     }
 
@@ -152,8 +156,14 @@ public class WasmNodeFactory {
         assert frameDescriptor == null;
         assert lexicalScope == null;
 
-        functionStartPos = nameToken.getStartIndex();
-        functionName = nameToken.getText();
+        functionIndex = new Integer(functionCount++); // FIXME functionIndex var not reset to 0.... important?
+        if (nameToken != null) {
+            functionStartPos = nameToken.getStartIndex();
+            functionName = nameToken.getText();
+            indices.put(functionName, functionIndex);
+        } else {
+            functionStartPos = bodyStartToken.getStartIndex();
+        }
         functionBodyStartPos = bodyStartToken.getStartIndex();
         frameDescriptor = new FrameDescriptor();
         methodNodes = new ArrayList<>();
@@ -191,8 +201,8 @@ public class WasmNodeFactory {
             final WasmFunctionBodyNode functionBodyNode = new WasmFunctionBodyNode(methodBlock);
             functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
 
-            final WasmRootNode rootNode = new WasmRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
-            allFunctions.put(functionName, Truffle.getRuntime().createCallTarget(rootNode));
+            final WasmRootNode rootNode = new WasmRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName, functionIndex); // FIXME
+            allFunctions.put(functionIndex, Truffle.getRuntime().createCallTarget(rootNode));
         }
 
         functionStartPos = 0;
@@ -727,7 +737,7 @@ public class WasmNodeFactory {
         return result;
     }
 
-    public WasmExpressionNode createLocal(Token l, Token name, Token type) {
+    public WasmExpressionNode createLocal(Token l, Token nameToken, Token type) {
         WasmExpressionNode index = createIndexLiteral(null, false);
         localCount++;
         WasmExpressionNode value = createNumericLiteral(type, null);
@@ -739,7 +749,7 @@ public class WasmNodeFactory {
             System.out.println("unexpected result: could not resolve index of local");
             return null;
         }
-        if (name != null) lexicalScope.indices.put(name.getText(), idx);
+        if (nameToken != null) lexicalScope.indices.put(nameToken.getText(), idx); // map string name to index
 
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(
                 idx,
@@ -747,6 +757,7 @@ public class WasmNodeFactory {
                 FrameSlotKind.Illegal);
         lexicalScope.locals.put(idx, frameSlot);
         final WasmExpressionNode result = WasmWriteLocalVariableNodeGen.create(value, frameSlot);
+
         srcFromToken(result, l);
         return result;
     }
@@ -770,11 +781,12 @@ public class WasmNodeFactory {
         }
 
         String name = null; // TODO functions should rely on indices too
-        Integer index = null;
+        Integer index;
         if (nameNode instanceof WasmIndexLiteralNode) {
             index = ((WasmIndexLiteralNode) nameNode).executeGeneric(null);
         } else {
             name = ((WasmStringLiteralNode) nameNode).executeGeneric(null);
+            index = lexicalScope.indices.get(name);
         }
         final WasmExpressionNode result;
         final FrameSlot frameSlot = lexicalScope.locals.get(index);
@@ -784,7 +796,7 @@ public class WasmNodeFactory {
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
             if (function) {
-                result = new WasmFunctionLiteralNode(language, name);
+                result = new WasmFunctionLiteralNode(language, name, index);
             }
             else {
                 result = new WasmReadGlobalVariableNode(language, name, index);

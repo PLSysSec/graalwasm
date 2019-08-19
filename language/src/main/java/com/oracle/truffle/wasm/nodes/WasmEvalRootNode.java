@@ -66,14 +66,14 @@ import com.oracle.truffle.wasm.runtime.WasmNull;
  */
 public final class WasmEvalRootNode extends RootNode {
 
-    private final Map<String, RootCallTarget> functions;
+    private final Map<Integer, RootCallTarget> functions;
     @CompilationFinal private boolean registered;
 
     private final ContextReference<WasmContext> reference;
 
     @Child private DirectCallNode mainCallNode;
 
-    public WasmEvalRootNode(WasmLanguage language, RootCallTarget rootFunction, Map<String, RootCallTarget> functions) {
+    public WasmEvalRootNode(WasmLanguage language, RootCallTarget rootFunction, Map<Integer, RootCallTarget> functions) {
         super(null); // internal frame
         this.functions = functions;
         this.mainCallNode = rootFunction != null ? DirectCallNode.create(rootFunction) : null;

@@ -64,14 +64,18 @@ public class WasmRootNode extends RootNode {
     /** The name of the function, for printing purposes only. */
     private final String name;
 
+    /** The index of the function, for printing purposes, if there is no String name. */
+    private final Integer index;
+
     @CompilationFinal private boolean isCloningAllowed;
 
     private final SourceSection sourceSection;
 
-    public WasmRootNode(WasmLanguage language, FrameDescriptor frameDescriptor, WasmExpressionNode bodyNode, SourceSection sourceSection, String name) {
+    public WasmRootNode(WasmLanguage language, FrameDescriptor frameDescriptor, WasmExpressionNode bodyNode, SourceSection sourceSection, String name, Integer index) {
         super(language, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
+        this.index = index;
         this.sourceSection = sourceSection;
     }
 
@@ -92,7 +96,15 @@ public class WasmRootNode extends RootNode {
 
     @Override
     public String getName() {
-        return name;
+        if (name != null) {
+            return name;
+        } else {
+            return getIndex().toString();
+        }
+    }
+
+    public Integer getIndex() {
+        return index;
     }
 
     public void setCloningAllowed(boolean isCloningAllowed) {

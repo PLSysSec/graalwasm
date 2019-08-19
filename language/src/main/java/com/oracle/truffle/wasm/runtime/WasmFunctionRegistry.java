@@ -43,6 +43,7 @@ package com.oracle.truffle.wasm.runtime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,6 +60,7 @@ public final class WasmFunctionRegistry {
 
     private final WasmLanguage language;
     private final FunctionsObject functionsObject = new FunctionsObject();
+    private final Map<String, Integer> indices = new HashMap<>();
 
     public WasmFunctionRegistry(WasmLanguage language) {
         this.language = language;
@@ -68,11 +70,21 @@ public final class WasmFunctionRegistry {
      * Returns the canonical {@link WasmFunction} object for the given name. If it does not exist yet,
      * it is created.
      */
-    public WasmFunction lookup(String name, boolean createIfNotPresent) {
-        WasmFunction result = functionsObject.functions.get(name);
+    public WasmFunction lookup(String name, Integer index, boolean createIfNotPresent) {
+        if (index == null) {
+            index = getIndex(name);
+        }
+
+        WasmFunction result = null;
+
+        if (index != null) {
+            result = getFunction(index); // check if function already exists
+        }
+
         if (result == null && createIfNotPresent) {
-            result = new WasmFunction(language, name);
-            functionsObject.functions.put(name, result);
+            result = new WasmFunction(language, name, index);
+            functionsObject.putMember(index, result);
+            if (index != null && name != null) mapStringToIndex(name, index);
         }
         return result;
     }
@@ -82,15 +94,15 @@ public final class WasmFunctionRegistry {
      * node. If the function did not exist before, it defines the function. If the function existed
      * before, it redefines the function and the old implementation is discarded.
      */
-    public WasmFunction register(String name, RootCallTarget callTarget) {
-        WasmFunction function = lookup(name, true);
+    public WasmFunction register(String name, Integer index, RootCallTarget callTarget) {
+        WasmFunction function = lookup(name, index, true);
         function.setCallTarget(callTarget);
         return function;
     }
 
-    public void register(Map<String, RootCallTarget> newFunctions) {
-        for (Map.Entry<String, RootCallTarget> entry : newFunctions.entrySet()) {
-            register(entry.getKey(), entry.getValue());
+    public void register(Map<Integer, RootCallTarget> newFunctions) {
+        for (Map.Entry<Integer, RootCallTarget> entry : newFunctions.entrySet()) {
+            register(entry.getValue().getRootNode().getName(), entry.getKey(), entry.getValue()); // TODO any situations where this getName() might not work properly?
         }
     }
 
@@ -98,15 +110,23 @@ public final class WasmFunctionRegistry {
         register(WasmLanguageParser.parseWasm(language, newFunctions));
     }
 
-    public WasmFunction getFunction(String name) {
-        return functionsObject.functions.get(name);
+    private void mapStringToIndex(String name, Integer index) {
+        indices.put(name, index);
+    }
+
+    private Integer getIndex(String name) {
+        return indices.get(name);
+    }
+
+    private WasmFunction getFunction(Integer index) {
+        return functionsObject.getMember(index);
     }
 
     /**
      * Returns the sorted list of all functions, for printing purposes only.
      */
     public List<WasmFunction> getFunctions() {
-        List<WasmFunction> result = new ArrayList<>(functionsObject.functions.values());
+        List<WasmFunction> result = new ArrayList<>(functionsObject.getMapping().values());
         Collections.sort(result, new Comparator<WasmFunction>() {
             public int compare(WasmFunction f1, WasmFunction f2) {
                 return f1.toString().compareTo(f2.toString());

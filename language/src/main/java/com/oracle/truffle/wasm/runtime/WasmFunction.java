@@ -87,6 +87,9 @@ public final class WasmFunction implements TruffleObject {
     /** The name of the function. */
     private final String name;
 
+    /** The index of the function. */
+    private final Integer index;
+
     /** The current implementation of this function. */
     private RootCallTarget callTarget;
 
@@ -97,15 +100,18 @@ public final class WasmFunction implements TruffleObject {
      */
     private final CyclicAssumption callTargetStable;
 
-    protected WasmFunction(WasmLanguage language, String name) {
+    protected WasmFunction(WasmLanguage language, String name, Integer index) {
         this.name = name;
-        this.callTarget = Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(language, name));
+        this.index = index;
+        this.callTarget = Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(language, name, index));
         this.callTargetStable = new CyclicAssumption(name);
     }
 
     public String getName() {
         return name;
     }
+
+    public Integer getIndex() { return index; }
 
     protected void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;

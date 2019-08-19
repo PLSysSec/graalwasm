@@ -107,6 +107,7 @@ public final class WasmContext {
     private final WasmLanguage language;
     private final AllocationReporter allocationReporter;
     private final Iterable<Scope> topScopes; // Cache the top scopes
+    private int functionCount = 0;
 
     public WasmContext(WasmLanguage language, TruffleLanguage.Env env, List<NodeFactory<? extends WasmBuiltinNode>> externalBuiltins) {
         this.env = env;
@@ -209,10 +210,10 @@ public final class WasmContext {
         builtinBodyNode.setUnavailableSourceSection();
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        WasmRootNode rootNode = new WasmRootNode(language, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
+        WasmRootNode rootNode = new WasmRootNode(language, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name, functionCount++);
 
         /* Register the builtin function in our function registry. */
-        getFunctionRegistry().register(name, Truffle.getRuntime().createCallTarget(rootNode));
+        getFunctionRegistry().register(name, null, Truffle.getRuntime().createCallTarget(rootNode));
     }
 
     public static NodeInfo lookupNodeInfo(Class<?> clazz) {

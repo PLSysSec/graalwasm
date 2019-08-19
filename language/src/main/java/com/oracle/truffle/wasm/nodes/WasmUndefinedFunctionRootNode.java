@@ -52,8 +52,8 @@ import com.oracle.truffle.wasm.runtime.WasmUndefinedNameException;
  * {@link WasmUndefinedNameException#undefinedFunction exception}.
  */
 public class WasmUndefinedFunctionRootNode extends WasmRootNode {
-    public WasmUndefinedFunctionRootNode(WasmLanguage language, String name) {
-        super(language, null, null, null, name);
+    public WasmUndefinedFunctionRootNode(WasmLanguage language, String name, Integer index) {
+        super(language, null, null, null, name, index);
     }
 
     @Override

@@ -55,9 +55,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 final class FunctionsObject implements TruffleObject {
 
-    final Map<String, WasmFunction> functions = new HashMap<>();
+    private final Map<Integer, WasmFunction> functions = new HashMap<>();
 
     FunctionsObject() {
+    }
+
+    Map<Integer, WasmFunction> getMapping() {
+        return functions;
     }
 
     @ExportMessage
@@ -65,7 +69,7 @@ final class FunctionsObject implements TruffleObject {
         return true;
     }
 
-    @ExportMessage
+    /*@ExportMessage
     @TruffleBoundary
     Object readMember(String member) {
         return functions.get(member);
@@ -75,7 +79,7 @@ final class FunctionsObject implements TruffleObject {
     @TruffleBoundary
     boolean isMemberReadable(String member) {
         return functions.containsKey(member);
-    }
+    }*/
 
     @ExportMessage
     @TruffleBoundary
@@ -83,9 +87,17 @@ final class FunctionsObject implements TruffleObject {
         return new FunctionNamesObject(functions.keySet().toArray());
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof FunctionsObject;
+    WasmFunction getMember(Integer index) {
+        return functions.get(index);
     }
+
+    void putMember(Integer index, WasmFunction function) {
+        functions.put(index, function);
+    }
+
+    /*public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof FunctionsObject;
+    }*/
 
     @ExportLibrary(InteropLibrary.class)
     static final class FunctionNamesObject implements TruffleObject {

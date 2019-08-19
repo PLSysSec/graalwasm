@@ -64,6 +64,9 @@ public final class WasmFunctionLiteralNode extends WasmExpressionNode {
     /** The name of the function. */
     private final String functionName;
 
+    /** The index of the function. */
+    private final Integer functionIndex;
+
     /**
      * The resolved function. During parsing (in the constructor of this node), we do not have the
      * {@link WasmContext} available yet, so the lookup can only be done at {@link #executeGeneric
@@ -74,9 +77,10 @@ public final class WasmFunctionLiteralNode extends WasmExpressionNode {
 
     private final ContextReference<WasmContext> reference;
 
-    public WasmFunctionLiteralNode(WasmLanguage language, String functionName) {
-        this.functionName = functionName;
+    public WasmFunctionLiteralNode(WasmLanguage language, String functionName, Integer functionIndex) {
         this.reference = language.getContextReference();
+        this.functionName = functionName;
+        this.functionIndex = functionIndex;
     }
 
     @Override
@@ -85,7 +89,7 @@ public final class WasmFunctionLiteralNode extends WasmExpressionNode {
             /* We are about to change a @CompilationFinal field. */
             CompilerDirectives.transferToInterpreterAndInvalidate();
             /* First execution of the node: lookup the function in the function registry. */
-            cachedFunction = reference.get().getFunctionRegistry().lookup(functionName, true);
+            cachedFunction = reference.get().getFunctionRegistry().lookup(functionName, functionIndex, true); // FIXME why create if not present?
         }
         return cachedFunction;
     }

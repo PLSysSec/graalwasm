@@ -47,6 +47,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.lang.Iterable;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -98,7 +99,20 @@ public final class WasmMain {
 
         try {
             Value result = context.eval(source);
-            if (context.getBindings(Wasm).getMember("$main") == null) {
+            /*Value bindings = context.getBindings(Wasm);
+            HashSet<String> keys = bindings.getMemberKeys();
+            for (Object s : keys) {
+                err.println("member = " + s);
+            }
+            int arrSize = keys.size();
+            err.println("num members = " + keys.size());
+            //String[] arr = new String[arrSize];
+            Object[] arr = keys.toArray();
+            for (int i = 0; i < arrSize; i++) {
+                Object mem = arr[i];
+                err.println("member " + i + " = " + mem);
+            }*/
+            if (context.getBindings(Wasm).getMember("main") == null) { // FIXME convert "$main" to index, then get
                 err.println("No function main() defined in Wasm source file.");
                 return 1;
             }
