@@ -47,9 +47,11 @@ import java.util.List;
 import java.util.Map;
 import java.lang.Integer;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltin;
 import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltinFactory;
+import com.oracle.truffle.wasm.nodes.WasmFunctionSignatureNode;
 import com.oracle.truffle.wasm.nodes.expression.*;
 import com.oracle.truffle.wasm.nodes.global.WasmReadGlobalVariableNode;
 import com.oracle.truffle.wasm.nodes.global.WasmWriteGlobalVariableNode;
@@ -118,6 +120,7 @@ public class WasmNodeFactory {
     private final Source source;
     private final Map<Integer, RootCallTarget> allFunctions;
     private final Map<String, Integer> indices;
+    private final Map<Integer, WasmFunctionSignatureNode> signatureMap;
     private boolean memoryRegistered = false;
 
     /* State while parsing a function. */
@@ -141,10 +144,15 @@ public class WasmNodeFactory {
         this.source = source;
         this.allFunctions = new HashMap<>();
         this.indices = new HashMap<>();
+        this.signatureMap = new HashMap<>();
     }
 
     public Map<Integer, RootCallTarget> getAllFunctions() {
         return allFunctions;
+    }
+
+    public Integer getIndex(String name) {
+        return indices.get(name);
     }
 
     public void startFunction(Token nameToken, Token bodyStartToken) {
@@ -249,6 +257,19 @@ public class WasmNodeFactory {
                 flattenedNodes.add(n);
             }
         }
+    }
+
+    public void createSignature(Token nameToken, int funcIndex, int numParams, int numResults) {
+        final WasmFunctionSignatureNode signatureNode = new WasmFunctionSignatureNode(numParams, numResults);
+        if (nameToken != null) {
+            srcFromToken(signatureNode, nameToken);
+            indices.put(nameToken.getText(), funcIndex);
+        }
+        signatureMap.put(funcIndex, signatureNode); // TODO will also need a table of all func types when impl that later
+    }
+
+    public WasmFunctionSignatureNode getSignature(Integer funcIndex) {
+        return signatureMap.get(funcIndex);
     }
 
     /**

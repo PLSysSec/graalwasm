@@ -64,6 +64,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 import com.oracle.truffle.wasm.nodes.WasmRootNode;
 import com.oracle.truffle.wasm.nodes.WasmStatementNode;
+import com.oracle.truffle.wasm.nodes.WasmFunctionSignatureNode;
 import com.oracle.truffle.wasm.parser.WasmParseError;
 }
 
@@ -76,7 +77,7 @@ import com.oracle.truffle.wasm.parser.WasmParseError;
 {
 private WasmNodeFactory factory;
 private Source source;
-private static int numlocals = 0;
+private static int numFunc = 0;
 
 private static final class BailoutErrorListener extends BaseErrorListener {
     private final Source source;
@@ -111,6 +112,8 @@ public static Map<Integer, RootCallTarget> parseWasm(WasmLanguage language, Sour
     parser.addErrorListener(listener);
     parser.factory = new WasmNodeFactory(language, source);
     parser.source = source;
+    parser.wasmfuncpass();
+    parser.reset();
     parser.wasmlanguage();
     return parser.factory.getAllFunctions();
 }
@@ -150,10 +153,97 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // options { tokenVocab=WatLexer; }
 
+
+/*
+ * Pass for collecting function signatures
+ */
+
+
+wasmfuncpass
+  : moduleFP
+  ;
+
+moduleFP
+  : module_FP EOF
+  | module_fieldFP* EOF
+  ;
+
+module_fieldFP
+  : funcFP
+  | type_def
+  //| table // funcref still used?
+  //| elem
+  //| data
+  //| start
+  //| simport
+  //| export
+  ;
+
+module_FP
+  : LPAR MODULE VAR? module_fieldFP* RPAR
+  ;
+
+funcFP
+  : LPAR FUNC bind_var?
+    func_fieldsFP                               { factory.createSignature($bind_var.start, numFunc++, $func_fieldsFP.numPar, $func_fieldsFP.numRes); }
+    RPAR
+  ;
+
+func_fieldsFP returns [int numPar, int numRes]
+  : type_use? func_fields_bodyFP                { $numPar = $func_fields_bodyFP.numPar; $numRes = $func_fields_bodyFP.numRes; } // TODO handle type_use
+  //| inline_import type_use? func_fields_importFP
+  //| inline_export func_fieldsFP
+  ;
+
+/*func_fields_importFP returns [WasmStatementNode result]
+  : (
+    LPAR PARAM value_typeFP* RPAR
+    |
+    LPAR PARAM bind_var value_typeFP RPAR
+    )
+    func_fields_import_resultFP
+  ;*/
+
+/*func_fields_import_resultFP returns [WasmStatementNode result] // TODO
+  : (
+    LPAR RESULT value_typeFP* RPAR
+    )*
+  ;*/
+
+func_fields_bodyFP returns [int numPar, int numRes]
+  :                                             { int numPar = 0; }
+    (
+    LPAR PARAM
+    value_type*                                 { numPar++; }
+    RPAR
+    |
+    LPAR PARAM VAR value_type   RPAR            { numPar++; }
+    )*
+    func_result_bodyFP                          { $numPar = numPar; $numRes = $func_result_bodyFP.numRes; }
+  ;
+
+func_result_bodyFP returns [int numRes]//[int numI32, int numI64, int numF32, int numF64]
+  :                                             { int numRes = 0; }//{ int numI32 = 0; int numI64 = 0; int numF32 = 0; int numF64 = 0; }
+    (LPAR RESULT value_type                     { numRes++; }/*{ switch($value_typeFP) {
+                                                      case 'i32' : numI32++;
+                                                      case 'i64' : numI64++;
+                                                      case 'f32' : numF32++;
+                                                      case 'f64' : numF64++; } }*/
+     RPAR)?                                     { $numRes = numRes; }//{ $numI32 = numI32; $numI64 = numI64; $numF32 = numF32; $numF64 = numF64; }
+     .*?
+  ;
+
+/*value_typeFP
+  : 'i32' | 'i64' | 'f32' | 'f64' ;*/
+
+/*
+ * Pass for collecting code (function bodies)
+ */
+
+
 wasmlanguage
   : module
   ;
-
 
 value
   : INT | FLOAT
@@ -233,12 +323,21 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | BR_IF var                                           //{ $result = factory.createBranch($BR_IF, $var.start); } TODO what does this look like in stack notation?
   | BR_TABLE var+                                       //{ $result = factory.createBranch($BR_TABLE, $var.start); } TODO how to handle 'var+' ? include index too? and what about default?
   | RETURN                                              { $result = factory.createReturn($RETURN, (WasmExpressionNode) body.pop()); }
-  | CALL VAR                                            { List<WasmExpressionNode> params = new ArrayList<>();
-                                                          params.add((WasmExpressionNode) body.pop()); // FIXME only works w one arg atm
-                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($VAR, false), true), params, $VAR); } // TODO num params depends on the function...
-  | CALL NAT                                            { List<WasmExpressionNode> params = new ArrayList<>();
-                                                            params.add((WasmExpressionNode) body.pop()); // FIXME only works w one arg atm
-                                                            $result = factory.createCall(factory.createRead(factory.createIndexLiteral($NAT, false), true), params, $NAT); } // TODO num params depends on the function...
+  | CALL VAR                                            { String funcName = $VAR.getText();
+                                                          Integer funcIndex = factory.getIndex(funcName);
+                                                          int numArgs = factory.getSignature(funcIndex).getNumParams();
+                                                          List<WasmExpressionNode> params = new ArrayList<>();
+                                                          for (int i = 0; i < numArgs; i++) {
+                                                            params.add((WasmExpressionNode) body.pop());
+                                                          } // FIXME still need to check ret
+                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($VAR, false), true), params, $VAR); }
+  | CALL NAT                                            { Integer funcIndex = Integer.parseUnsignedInt($NAT.getText());
+                                                          int numArgs = factory.getSignature(funcIndex).getNumParams();
+                                                          List<WasmExpressionNode> params = new ArrayList<>();
+                                                          for (int i = 0; i < numArgs; i++) {
+                                                            params.add((WasmExpressionNode) body.pop());
+                                                          } // FIXME still need to check ret
+                                                          $result = factory.createCall(factory.createRead(factory.createIndexLiteral($NAT, false), true), params, $NAT); }
   | LOCAL_GET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false), false);
                                                           else $result = factory.createRead(factory.createIndexLiteral($var.start, false), false); }
   | LOCAL_SET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createAssignment(factory.createStringLiteral($var.start, false), (WasmExpressionNode) body.pop());

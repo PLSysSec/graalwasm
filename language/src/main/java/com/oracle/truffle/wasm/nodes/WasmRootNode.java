@@ -118,6 +118,6 @@ public class WasmRootNode extends RootNode {
 
     @Override
     public String toString() {
-        return "root " + name;
+        return name != null ? "root " + name : "root (index) " + index;
     }
 }
