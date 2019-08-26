@@ -215,7 +215,9 @@ func_fields_bodyFP returns [ArrayList<String> parArr, ArrayList<String> resArr]
   :                                             { ArrayList<String> parArr = new ArrayList<String>(); }
     (
     LPAR PARAM
-    value_type*                                 { parArr.add($value_type.start.getText()); }
+    (
+    value_type                                  { parArr.add($value_type.start.getText()); }
+    )*
     RPAR
     |
     LPAR PARAM VAR value_type RPAR              { parArr.add($value_type.start.getText()); }
@@ -520,7 +522,9 @@ func_fields_import_result returns [WasmStatementNode result]
 func_fields_body returns [WasmStatementNode result]
   : (
     LPAR PARAM
-    value_type*                                 { factory.addFormalParameter(null); }
+    (
+    value_type                                  { factory.addFormalParameter(null); }
+    )*
     RPAR
     |
     LPAR PARAM VAR value_type RPAR              { factory.addFormalParameter($VAR); }
