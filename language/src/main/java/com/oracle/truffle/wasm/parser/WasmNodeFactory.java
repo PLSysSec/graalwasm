@@ -259,8 +259,8 @@ public class WasmNodeFactory {
         }
     }
 
-    public void createSignature(Token nameToken, int funcIndex, int numParams, int numResults) {
-        final WasmFunctionSignatureNode signatureNode = new WasmFunctionSignatureNode(numParams, numResults);
+    public void createSignature(Token nameToken, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
+        final WasmFunctionSignatureNode signatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
         if (nameToken != null) {
             srcFromToken(signatureNode, nameToken);
             indices.put(nameToken.getText(), funcIndex);
@@ -270,6 +270,23 @@ public class WasmNodeFactory {
 
     public WasmFunctionSignatureNode getSignature(Integer funcIndex) {
         return signatureMap.get(funcIndex);
+    }
+
+    public String getTypeString(WasmExpressionNode node) {
+        String actualType;
+        if (node instanceof WasmIntegerLiteralNode) {
+            actualType = "i32";
+        } else if (node instanceof WasmLongLiteralNode) {
+            actualType = "i64";
+        } else if (node instanceof WasmFloatLiteralNode) {
+            actualType = "f32";
+        } else if (node instanceof WasmDoubleLiteralNode) {
+            actualType = "f64";
+        } else {
+            throw new RuntimeException("unexpected type: " + node);
+        }
+
+        return actualType;
     }
 
     /**

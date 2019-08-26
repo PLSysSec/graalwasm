@@ -171,7 +171,7 @@ moduleFP
 module_fieldFP
   : funcFP
   | type_def
-  //| table // funcref still used?
+  //| table // funcref
   //| elem
   //| data
   //| start
@@ -185,12 +185,13 @@ module_FP
 
 funcFP
   : LPAR FUNC bind_var?
-    func_fieldsFP                               { factory.createSignature($bind_var.start, numFunc++, $func_fieldsFP.numPar, $func_fieldsFP.numRes); }
+    func_fieldsFP                               { factory.createSignature($bind_var.start, numFunc++, $func_fieldsFP.parArr, $func_fieldsFP.resArr); }
     RPAR
   ;
 
-func_fieldsFP returns [int numPar, int numRes]
-  : type_use? func_fields_bodyFP                { $numPar = $func_fields_bodyFP.numPar; $numRes = $func_fields_bodyFP.numRes; } // TODO handle type_use
+func_fieldsFP returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  : type_use? func_fields_bodyFP                { $parArr = $func_fields_bodyFP.parArr;
+                                                  $resArr = $func_fields_bodyFP.resArr; } // TODO handle type_use
   //| inline_import type_use? func_fields_importFP
   //| inline_export func_fieldsFP
   ;
@@ -204,37 +205,32 @@ func_fieldsFP returns [int numPar, int numRes]
     func_fields_import_resultFP
   ;*/
 
-/*func_fields_import_resultFP returns [WasmStatementNode result] // TODO
+/*func_fields_import_resultFP returns [WasmStatementNode result]
   : (
     LPAR RESULT value_typeFP* RPAR
     )*
   ;*/
 
-func_fields_bodyFP returns [int numPar, int numRes]
-  :                                             { int numPar = 0; }
+func_fields_bodyFP returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  :                                             { ArrayList<String> parArr = new ArrayList<String>(); }
     (
     LPAR PARAM
-    value_type*                                 { numPar++; }
+    value_type*                                 { parArr.add($value_type.start.getText()); }
     RPAR
     |
-    LPAR PARAM VAR value_type   RPAR            { numPar++; }
+    LPAR PARAM VAR value_type RPAR              { parArr.add($value_type.start.getText()); }
     )*
-    func_result_bodyFP                          { $numPar = numPar; $numRes = $func_result_bodyFP.numRes; }
+    func_result_bodyFP                          { $parArr = parArr;
+                                                  $resArr = $func_result_bodyFP.resArr; }
   ;
 
-func_result_bodyFP returns [int numRes]//[int numI32, int numI64, int numF32, int numF64]
-  :                                             { int numRes = 0; }//{ int numI32 = 0; int numI64 = 0; int numF32 = 0; int numF64 = 0; }
-    (LPAR RESULT value_type                     { numRes++; }/*{ switch($value_typeFP) {
-                                                      case 'i32' : numI32++;
-                                                      case 'i64' : numI64++;
-                                                      case 'f32' : numF32++;
-                                                      case 'f64' : numF64++; } }*/
-     RPAR)?                                     { $numRes = numRes; }//{ $numI32 = numI32; $numI64 = numI64; $numF32 = numF32; $numF64 = numF64; }
+func_result_bodyFP returns [ArrayList<String> resArr]
+  :                                             { ArrayList<String> resArr = new ArrayList<String>(); }
+    (LPAR RESULT value_type                     { resArr.add($value_type.start.getText()); }
+     RPAR)?                                     { $resArr = resArr; }
      .*?
   ;
 
-/*value_typeFP
-  : 'i32' | 'i64' | 'f32' | 'f64' ;*/
 
 /*
  * Pass for collecting code (function bodies)
@@ -323,21 +319,51 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | BR_IF var                                           //{ $result = factory.createBranch($BR_IF, $var.start); } TODO what does this look like in stack notation?
   | BR_TABLE var+                                       //{ $result = factory.createBranch($BR_TABLE, $var.start); } TODO how to handle 'var+' ? include index too? and what about default?
   | RETURN                                              { $result = factory.createReturn($RETURN, (WasmExpressionNode) body.pop()); }
-  | CALL VAR                                            { String funcName = $VAR.getText();
-                                                          Integer funcIndex = factory.getIndex(funcName);
-                                                          int numArgs = factory.getSignature(funcIndex).getNumParams();
+  | CALL var                                            { String funcId = $var.start.getText();
+                                                          Integer funcIndex;
+                                                          Boolean index = true;
+                                                          try {
+                                                            funcIndex = Integer.parseUnsignedInt(funcId);
+                                                          } catch (NumberFormatException e) {
+                                                            funcIndex = factory.getIndex(funcId);
+                                                            index = false;
+                                                          }
+
+                                                          WasmFunctionSignatureNode sig = factory.getSignature(funcIndex);
+                                                          int numArgs = sig.getNumParams();
                                                           List<WasmExpressionNode> params = new ArrayList<>();
+                                                          // build this list in case of error
+                                                          ArrayList<String> wrongArgTypes = new ArrayList<>();
+                                                          Boolean error = false; // error flag
+
                                                           for (int i = 0; i < numArgs; i++) {
-                                                            params.add((WasmExpressionNode) body.pop());
-                                                          } // FIXME still need to check ret
-                                                          $result = factory.createCall(factory.createRead(factory.createStringLiteral($VAR, false), true), params, $VAR); }
-  | CALL NAT                                            { Integer funcIndex = Integer.parseUnsignedInt($NAT.getText());
-                                                          int numArgs = factory.getSignature(funcIndex).getNumParams();
-                                                          List<WasmExpressionNode> params = new ArrayList<>();
-                                                          for (int i = 0; i < numArgs; i++) {
-                                                            params.add((WasmExpressionNode) body.pop());
-                                                          } // FIXME still need to check ret
-                                                          $result = factory.createCall(factory.createRead(factory.createIndexLiteral($NAT, false), true), params, $NAT); }
+                                                            // typecheck, proceed if ok otherwise error
+                                                            WasmExpressionNode node = (WasmExpressionNode) body.pop();
+                                                            String expectedType = sig.getParamTypeAt(i);
+                                                            String actualType = factory.getTypeString(node);
+                                                            if (expectedType.compareTo(actualType) == 0) {
+                                                              params.add(node);
+                                                            } else {
+                                                              error = true;
+                                                            }
+                                                            wrongArgTypes.add(0, actualType);
+                                                          }
+
+                                                          if (error) {
+                                                            // build error string
+                                                            ArrayList<String> expArgTypes = new ArrayList<String>();
+                                                            for (int i = 0; i < numArgs; i++) {
+                                                              expArgTypes.add(0, sig.getParamTypeAt(i));
+                                                            }
+                                                            String msg = "invalid module: type mismatch: operator requires " + expArgTypes + " but stack has " + wrongArgTypes;
+                                                            SemErr($var.start, msg);
+                                                          }
+
+                                                          if (index) {
+                                                            $result = factory.createCall(factory.createRead(factory.createIndexLiteral($var.start, false), true), params, $var.start);
+                                                          } else {
+                                                            $result = factory.createCall(factory.createRead(factory.createStringLiteral($var.start, false), true), params, $var.start);
+                                                          }}
   | LOCAL_GET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createRead(factory.createStringLiteral($var.start, false), false);
                                                           else $result = factory.createRead(factory.createIndexLiteral($var.start, false), false); }
   | LOCAL_SET var                                       { if ($var.start.getText().charAt(0) == '$') $result = factory.createAssignment(factory.createStringLiteral($var.start, false), (WasmExpressionNode) body.pop());
@@ -465,7 +491,7 @@ const_expr returns [WasmStatementNode result]
 /* Functions */
 
 func
-  : LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); } // TODO nullptr if no bind_var => default val?
+  : LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); }
     func_fields                                 { factory.finishFunction($func_fields.result); }
     RPAR
   ;
@@ -485,7 +511,7 @@ func_fields_import returns [WasmStatementNode result]
     func_fields_import_result                   { $result = $func_fields_import_result.result; }
   ;
 
-func_fields_import_result returns [WasmStatementNode result] // TODO
+func_fields_import_result returns [WasmStatementNode result]
   : (
     LPAR RESULT value_type* RPAR
     )*
@@ -498,7 +524,6 @@ func_fields_body returns [WasmStatementNode result]
     RPAR
     |
     LPAR PARAM VAR value_type RPAR              { factory.addFormalParameter($VAR); }
-                                                  // TODO add arity counter + map strings to indices (locals)
     )*
     func_result_body                            { $result = $func_result_body.result; }
   ;
@@ -506,10 +531,7 @@ func_fields_body returns [WasmStatementNode result]
 func_result_body returns [WasmStatementNode result]
   : (LPAR RESULT value_type RPAR)?
     func_body                                   { $result = $func_body.result; }
-                                                //{ // if types match
-                                                  //$result = factory.createReturn($func_body.stop, ); } //(WasmExpressionNode) $result); }
-  ; // apparently part of "validation rules" => should I handle this? TODO handle mismatch
-  // { -predicate to stop parsing if eval -> false }?
+  ;
 
 func_body returns [WasmStatementNode result]
   :                                             { factory.startBlock();
@@ -524,7 +546,7 @@ func_body returns [WasmStatementNode result]
     res=instr_list[body]                        { $result = factory.finishBlock(new ArrayList($res.result), $res.start.getStartIndex(), $res.stop.getStopIndex() - $res.start.getStartIndex() + 1); }
   ;
 
-/* Tables, Memories & Globals */ // TODO
+/* Tables, Memories & Globals */
 
 offset
   : LPAR OFFSET const_expr RPAR
@@ -573,7 +595,7 @@ global_fields returns [WasmStatementNode result_val, boolean result_mut]
   | inline_export global_fields
   ;
 
-/* Imports & Exports */ // TODO
+/* Imports & Exports */
 
 import_desc
   : LPAR FUNC bind_var? type_use RPAR
@@ -606,7 +628,7 @@ inline_export
   : LPAR EXPORT name RPAR
   ;
 
-/* Modules */ // TODO
+/* Modules */
 
 type_
   : def_type
@@ -637,7 +659,7 @@ module_
   : LPAR MODULE VAR? module_field* RPAR
   ;
 
-/* Scripts */ // TODO
+/* Scripts */
 
 script_module
   : module_
