@@ -29,7 +29,7 @@ public final class GlobalsObject implements TruffleObject {
     @CompilerDirectives.TruffleBoundary
     Object readMember(String member) {
         return globals.get(member);
-    }
+    } // FIXME still String, how compiling?
 
     @ExportMessage
     @CompilerDirectives.TruffleBoundary

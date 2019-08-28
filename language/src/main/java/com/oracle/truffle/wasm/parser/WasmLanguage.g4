@@ -77,7 +77,7 @@ import com.oracle.truffle.wasm.parser.WasmParseError;
 {
 private WasmNodeFactory factory;
 private Source source;
-private static int numFunc = 0;
+private static int numFunc;
 
 private static final class BailoutErrorListener extends BaseErrorListener {
     private final Source source;
@@ -112,8 +112,10 @@ public static Map<Integer, RootCallTarget> parseWasm(WasmLanguage language, Sour
     parser.addErrorListener(listener);
     parser.factory = new WasmNodeFactory(language, source);
     parser.source = source;
+    numFunc = 0;
     parser.wasmfuncpass();
     parser.reset();
+    numFunc = 0;
     parser.wasmlanguage();
     return parser.factory.getAllFunctions();
 }
@@ -177,6 +179,7 @@ module_fieldFP
   //| start
   //| simport
   //| export
+  | .+?
   ;
 
 module_FP
@@ -276,12 +279,16 @@ func_type
   : (LPAR (RESULT value_type* | PARAM value_type* | PARAM bind_var value_type) RPAR)*
   ;
 
-table_type
-  : NAT NAT? elem_type
+table_type returns [Integer min, Integer max]
+  : mn=NAT mx=NAT? elem_type                { $min = Integer.parseUnsignedInt($mn.getText());
+                                              if ($mx != null) { $max = Integer.parseUnsignedInt($mx.getText()); }
+                                              else { $max = -1; }}
   ;
 
-memory_type returns [Integer result]
-  : min=NAT max=NAT?                        { $result = Integer.parseUnsignedInt($min.getText()); }
+memory_type returns [Integer min, Integer max]
+  : mn=NAT mx=NAT?                          { $min = Integer.parseUnsignedInt($mn.getText());
+                                              if ($mx != null) { $max = Integer.parseUnsignedInt($mx.getText()); }
+                                              else { $max = -1; }}
   ;
 
 type_use
@@ -493,8 +500,9 @@ const_expr returns [WasmStatementNode result]
 /* Functions */
 
 func
-  : LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); }
-    func_fields                                 { factory.finishFunction($func_fields.result); }
+  :                                             { WasmFunctionSignatureNode sig = factory.getSignature(numFunc++); }
+    LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); }
+    func_fields                                 { factory.finishFunction($func_fields.result); } // TODO do result check here
     RPAR
   ;
 
@@ -561,12 +569,12 @@ elem
   : LPAR ELEM var? offset var* RPAR
   ;
 
-table
-  : LPAR TABLE bind_var? table_fields RPAR
+table returns [WasmStatementNode result]
+  : LPAR TABLE bind_var? table_fields RPAR          { $result = factory.createTable($TABLE, $bind_var.start, $table_fields.min, $table_fields.max); }
   ;
 
-table_fields
-  : table_type
+table_fields returns [Integer min, Integer max]
+  : table_type                                      { $min = $table_type.min; $max = $table_type.max; }
   | inline_import table_type
   | inline_export table_fields
   | elem_type LPAR ELEM var* RPAR
@@ -577,11 +585,11 @@ data
   ;
 
 memory returns [WasmStatementNode result]
-  : LPAR MEMORY bind_var? memory_fields RPAR        { $result = factory.createMemory($MEMORY, $bind_var.start, $memory_fields.result, -1); }
+  : LPAR MEMORY bind_var? memory_fields RPAR        { $result = factory.createMemory($MEMORY, $bind_var.start, $memory_fields.min, $memory_fields.max); }
   ;
 
-memory_fields returns [Integer result]
-  : memory_type                                     { $result = $memory_type.result; }
+memory_fields returns [Integer min, Integer max]
+  : memory_type                                     { $min = $memory_type.min; $max = $memory_type.max; }
   | inline_import memory_type
   | inline_export memory_fields
   | LPAR DATA STRING* RPAR

@@ -7,8 +7,8 @@ import java.util.ArrayList;
 @NodeInfo(shortName = "signature", description = "The node implementing a function signature")
 public final class WasmFunctionSignatureNode extends WasmStatementNode {
 
-    @Child private ArrayList<String> params;
-    @Child private ArrayList<String> results;
+    private final ArrayList<String> params;
+    private final ArrayList<String> results;
 
     public WasmFunctionSignatureNode(ArrayList<String> params, ArrayList<String> results) {
         this.params = params;

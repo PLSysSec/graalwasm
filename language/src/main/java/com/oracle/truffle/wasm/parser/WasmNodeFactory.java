@@ -122,6 +122,7 @@ public class WasmNodeFactory {
     private final Map<String, Integer> indices;
     private final Map<Integer, WasmFunctionSignatureNode> signatureMap;
     private boolean memoryRegistered = false;
+    private boolean tableRegistered = false;
 
     /* State while parsing a function. */
     private int functionStartPos;
@@ -283,7 +284,7 @@ public class WasmNodeFactory {
         } else if (node instanceof WasmDoubleLiteralNode) {
             actualType = "f64";
         } else {
-            throw new RuntimeException("unexpected type: " + node);
+            throw new RuntimeException("unexpected type: " + node); // FIXME what happens when no retval?
         }
 
         return actualType;
@@ -1037,6 +1038,21 @@ public class WasmNodeFactory {
         }
 
         srcFromToken(result, m);
+        return result;
+    }
+
+    public WasmStatementNode createTable(Token t, Token name, int min, int max) {
+        final WasmExpressionNode result;
+
+        if (!tableRegistered) {
+            String nm = name == null ? "" : name.getText();
+            result = new WasmTableLiteralNode(language, nm, min, max);
+            language.getContextReference().get().getTableRegistry().register(nm, min, max);
+        } else {
+            throw new RuntimeException("multiple tables cannot be created");
+        }
+
+        srcFromToken(result, t);
         return result;
     }
 
