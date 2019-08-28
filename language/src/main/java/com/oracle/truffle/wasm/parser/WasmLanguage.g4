@@ -276,7 +276,7 @@ def_type
   ;
 
 func_type
-  : (LPAR (RESULT value_type* | PARAM value_type* | PARAM bind_var value_type) RPAR)*
+  : (LPAR (RESULT value_type | PARAM value_type* | PARAM bind_var value_type) RPAR)*
   ;
 
 table_type returns [Integer min, Integer max]
@@ -311,7 +311,7 @@ bind_var
 
 /* Instructions & Expressions */
 
-instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
+instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result] // FIXME add parens around each alternative so that gen'd .wat files can be parsed
   : plain_instr[body]                                   { $result = $plain_instr.result; }
   | call_instr_instr[body]                              { $result = $call_instr_instr.result; }
   | block_instr                                         { $result = $block_instr.result; }
@@ -490,7 +490,7 @@ instr_list [Stack<WasmStatementNode> body] returns [Stack<WasmStatementNode> res
                                                 { $result = body; }
   ;
 
-const_expr returns [WasmStatementNode result]
+const_expr returns [WasmStatementNode result] // FIXME test
   :                                             { factory.startBlock();
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
     res=instr_list[body]                        { $result = (WasmExpressionNode) body.pop();
@@ -560,13 +560,23 @@ func_body returns [WasmStatementNode result]
 
 /* Tables, Memories & Globals */
 
-offset
-  : LPAR OFFSET const_expr RPAR
+offset returns [WasmStatementNode result]
+  : LPAR OFFSET const_expr RPAR                     { $result = $const_expr.result; }
   //| expr
   ;
 
-elem
-  : LPAR ELEM var? offset var* RPAR
+elem returns [WasmStatementNode result]
+  : LPAR ELEM var? offset                           { ArrayList<Integer> funcRefs = new ArrayList<>(); }
+    (var                                            { String funcId = $var.start.getText();
+                                                      Integer funcIndex;
+                                                      try {
+                                                        funcIndex = Integer.parseUnsignedInt(funcId);
+                                                      } catch (NumberFormatException e) {
+                                                        funcIndex = factory.getIndex(funcId);
+                                                      }
+                                                      funcRefs.add(funcIndex);
+                                                      }
+    )* RPAR                                         { factory.createElem((WasmExpressionNode) $offset.result, funcRefs); }
   ;
 
 table returns [WasmStatementNode result]

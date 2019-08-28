@@ -819,7 +819,7 @@ public class WasmNodeFactory {
             return null;
         }
 
-        String name = null; // TODO functions should rely on indices too
+        String name = null;
         Integer index;
         if (nameNode instanceof WasmIndexLiteralNode) {
             index = ((WasmIndexLiteralNode) nameNode).executeGeneric(null);
@@ -1096,6 +1096,12 @@ public class WasmNodeFactory {
         }
 
         final WasmExpressionNode result = new WasmStoreNode(language, o, a, value, index);
+        return result;
+    }
+
+    public WasmStatementNode createElem(WasmExpressionNode offsetNode, ArrayList<Integer> funcIndices) {
+        // Implicitly initializes table at index 0 since only one table can exist in the current version of WebAssembly // offsetNode is currently instanceof WasmIntegerLiteralNode; when would it be something else?
+        final WasmStatementNode result = new WasmElemNode(language, offsetNode, funcIndices);
         return result;
     }
 

@@ -19,13 +19,13 @@ public final class TableObject implements TruffleObject {
     private int min;
     private int max = -1;
 
-    private byte[] table; // FIXME use ArrayList if non-primitive type needed
-    //private ArrayList<> table; // FIXME hold fxn ptrs ?????? how to store?
+    private int[] table; // FIXME use ArrayList if non-primitive type needed
+    //private ArrayList<> table; // FIXME hold fxn ptrs ?????? how to store? hold fxn signatures? "opaque values" == signature object?
 
     protected TableObject(int min, int max) {
         this.min = min;
         if (max != -1) { this.max = max; }
-        table = new byte[this.min];
+        table = new int[this.min];
     }
 
     @ExportMessage
@@ -50,17 +50,16 @@ public final class TableObject implements TruffleObject {
     }
 
     //@ExportMessage
-    public byte readElement(long index) throws InvalidArrayIndexException {
-        long idx = index;// * PAGESIZE;
-        if (!isArrayElementReadable(idx)) {
+    public int readElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        return table[(int) idx];
+        return table[(int) index];
     }
 
     //@ExportMessage
-    public void writeElement(long index, byte value) throws InvalidArrayIndexException {
+    public void writeElement(long index, int value) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
@@ -71,7 +70,7 @@ public final class TableObject implements TruffleObject {
     public int grow(int toGrow) {
         int delta = toGrow;
         int newSize = table.length + delta;
-        byte[] newTable = new byte[newSize];
+        int[] newTable = new int[newSize];
         for (int i = 0; i < table.length; i++) {
             newTable[i] = table[i];
         }
