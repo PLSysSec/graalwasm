@@ -57,6 +57,7 @@ import com.oracle.truffle.wasm.nodes.global.WasmReadGlobalVariableNode;
 import com.oracle.truffle.wasm.nodes.global.WasmWriteGlobalVariableNode;
 import com.oracle.truffle.wasm.nodes.local.*;
 import com.oracle.truffle.wasm.nodes.util.WasmUnboxNode;
+import com.oracle.truffle.wasm.runtime.WasmFunction;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.Token;
 
@@ -119,8 +120,14 @@ public class WasmNodeFactory {
     /* State while parsing a source unit. */
     private final Source source;
     private final Map<Integer, RootCallTarget> allFunctions;
-    private final Map<String, Integer> indices;
+    // map names to indices: functions
+    private final Map<String, Integer> funcIndices;
+    // map names to indices: types
+    private final Map<String, Integer> typeIndices;
+    // map functions to their signatures
     private final Map<Integer, WasmFunctionSignatureNode> signatureMap;
+    // map types to their signatures
+    private final Map<Integer, WasmFunctionSignatureNode> typeMap;
     private boolean memoryRegistered = false;
     private boolean tableRegistered = false;
 
@@ -144,8 +151,10 @@ public class WasmNodeFactory {
         this.language = language;
         this.source = source;
         this.allFunctions = new HashMap<>();
-        this.indices = new HashMap<>();
+        this.funcIndices = new HashMap<>();
+        this.typeIndices = new HashMap<>();
         this.signatureMap = new HashMap<>();
+        this.typeMap = new HashMap<>();
     }
 
     public Map<Integer, RootCallTarget> getAllFunctions() {
@@ -153,7 +162,7 @@ public class WasmNodeFactory {
     }
 
     public Integer getIndex(String name) {
-        return indices.get(name);
+        return funcIndices.get(name);
     }
 
     public void startFunction(Token nameToken, Token bodyStartToken) {
@@ -169,7 +178,7 @@ public class WasmNodeFactory {
         if (nameToken != null) {
             functionStartPos = nameToken.getStartIndex();
             functionName = nameToken.getText();
-            indices.put(functionName, functionIndex);
+            funcIndices.put(functionName, functionIndex);
         } else {
             functionStartPos = bodyStartToken.getStartIndex();
         }
@@ -260,13 +269,56 @@ public class WasmNodeFactory {
         }
     }
 
-    public void createSignature(Token nameToken, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
-        final WasmFunctionSignatureNode signatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
+    /**
+     * Adds explicitly declared type signature to the type map
+     *
+     * @param nameToken
+     * @param typeIndex
+     * @param paramsArray
+     * @param resultsArray
+     */
+
+    public void createType(Token nameToken, int typeIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
+        final WasmFunctionSignatureNode typeSignatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
+
         if (nameToken != null) {
-            srcFromToken(signatureNode, nameToken);
-            indices.put(nameToken.getText(), funcIndex);
+            srcFromToken(typeSignatureNode, nameToken);
+            typeIndices.put(nameToken.getText(), typeIndex);
         }
-        signatureMap.put(funcIndex, signatureNode); // TODO will also need a table of all func types when impl that later
+
+        typeMap.put(typeIndex, typeSignatureNode);
+    }
+
+    /**
+     * Adds implicitly declared type signature (from parsing a function) to the type map
+     *
+     * @param node
+     * @param typeIndex
+     */
+
+    public void registerType(WasmFunctionSignatureNode node, int typeIndex) {
+        typeMap.put(typeIndex, node);
+    }
+
+    /**
+     * Adds implicitly declared type signature (from parsing a function) to the function type map, so number of
+     * required arguments is known in advance.
+     *
+     * @param nameToken
+     * @param funcIndex
+     * @param paramsArray
+     * @param resultsArray
+     */
+
+    public void createSignature(Token nameToken, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
+        final WasmFunctionSignatureNode funcSignatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
+
+        if (nameToken != null) {
+            srcFromToken(funcSignatureNode, nameToken);
+            funcIndices.put(nameToken.getText(), funcIndex);
+        }
+
+        signatureMap.put(funcIndex, funcSignatureNode);
     }
 
     public WasmFunctionSignatureNode getSignature(Integer funcIndex) {

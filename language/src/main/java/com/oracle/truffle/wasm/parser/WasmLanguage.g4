@@ -78,6 +78,7 @@ import com.oracle.truffle.wasm.parser.WasmParseError;
 private WasmNodeFactory factory;
 private Source source;
 private static int numFunc;
+private static int numType;
 
 private static final class BailoutErrorListener extends BaseErrorListener {
     private final Source source;
@@ -116,6 +117,7 @@ public static Map<Integer, RootCallTarget> parseWasm(WasmLanguage language, Sour
     parser.wasmfuncpass();
     parser.reset();
     numFunc = 0;
+    numType = 0;
     parser.wasmlanguage();
     return parser.factory.getAllFunctions();
 }
@@ -271,12 +273,18 @@ global_type returns [Boolean result]
   | LPAR MUT value_type RPAR                { $result = new Boolean(true); }
   ;
 
-def_type
-  : LPAR FUNC func_type RPAR
+def_type returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  : LPAR FUNC func_type RPAR                { $parArr = $func_type.parArr; $resArr = $func_type.resArr; }
   ;
 
-func_type
-  : (LPAR (RESULT value_type | PARAM value_type* | PARAM bind_var value_type) RPAR)*
+func_type returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  :                                         { ArrayList<String> parArr = new ArrayList<String>();
+                                              ArrayList<String> resArr = new ArrayList<String>(); }
+    (LPAR (RESULT value_type                { resArr.add($value_type.start.getText()); }
+          | PARAM (value_type               { parArr.add($value_type.start.getText()); }
+                  )*
+          | PARAM bind_var value_type       { parArr.add($value_type.start.getText()); }
+    ) RPAR)*                                { $parArr = parArr; $resArr = resArr; }
   ;
 
 table_type returns [Integer min, Integer max]
@@ -291,8 +299,8 @@ memory_type returns [Integer min, Integer max]
                                               else { $max = -1; }}
   ;
 
-type_use
-  : LPAR TYPE var RPAR
+type_use returns [Integer typeIndex]
+  : LPAR TYPE var RPAR                      { }
   ;
 
 /* Immediates */
@@ -500,7 +508,8 @@ const_expr returns [WasmStatementNode result] // FIXME test
 /* Functions */
 
 func
-  :                                             { WasmFunctionSignatureNode sig = factory.getSignature(numFunc++); }
+  :                                             { WasmFunctionSignatureNode sig = factory.getSignature(numFunc++);
+                                                  factory.registerType(sig, numType++); }
     LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); }
     func_fields                                 { factory.finishFunction($func_fields.result); } // TODO do result check here
     RPAR
@@ -652,12 +661,12 @@ inline_export
 
 /* Modules */
 
-type_
-  : def_type
+type_ returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  : def_type                                    { $parArr = $def_type.parArr; $resArr = $def_type.resArr; }
   ;
 
-type_def
-  : LPAR TYPE bind_var? type_ RPAR
+type_def returns [WasmStatementNode result]
+  : LPAR TYPE bind_var? type_ RPAR              { factory.createType($bind_var.start, numType++, $type_.parArr, $type_.resArr); }
   ;
 
 start
