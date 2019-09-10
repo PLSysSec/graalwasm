@@ -190,7 +190,7 @@ module_FP
 
 funcFP
   : LPAR FUNC bind_var?
-    func_fieldsFP                               { factory.createSignature($bind_var.start, numFunc++, $func_fieldsFP.parArr, $func_fieldsFP.resArr); }
+    func_fieldsFP                               { factory.createSignature($bind_var.start, numFunc++, $func_fieldsFP.parArr, $func_fieldsFP.resArr, true); }
     RPAR
   ;
 
@@ -299,8 +299,17 @@ memory_type returns [Integer min, Integer max]
                                               else { $max = -1; }}
   ;
 
-type_use returns [Integer typeIndex]
-  : LPAR TYPE var RPAR                      { }
+type_use returns [WasmExpressionNode index] // FIXME factory.createIndexLiteral($var.start, false) ? (may not be index though...)
+// FIXME NEW FACTORY METHOD JUST FOR THIS
+  : LPAR TYPE var RPAR                      { $index = null; // necessary?
+                                              String id = $var.start.getText();
+                                              Integer index;
+                                              try {
+                                                index = Integer.parseUnsignedInt(id);
+                                              } catch (NumberFormatException e) {
+                                                index = factory.getTypeIndex(id);
+                                              }
+                                              $index = factory.createIndexLiteral(index); }
   ;
 
 /* Immediates */
@@ -342,7 +351,7 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
                                                           try {
                                                             funcIndex = Integer.parseUnsignedInt(funcId);
                                                           } catch (NumberFormatException e) {
-                                                            funcIndex = factory.getIndex(funcId);
+                                                            funcIndex = factory.getFuncIndex(funcId);
                                                             index = false;
                                                           }
 
@@ -408,32 +417,80 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   | CONVERT                                             { $result = factory.createConvert($CONVERT, (WasmExpressionNode) body.pop()); }
   ;
 
-
 call_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
-  : CALL_INDIRECT type_use? call_instr_params[body]     { $result = $call_instr_params.result; }
+  : CALL_INDIRECT type_use? call_instr_params[body]
   ;
 
-call_instr_params [Stack<WasmStatementNode> body] returns [WasmStatementNode result] // TODO
+call_instr_params [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
   : (LPAR PARAM value_type* RPAR)*
-    (LPAR RESULT value_type* RPAR)*                     //{ $result = createCallIndirect(); } // may need to move up one level for token
+    (LPAR RESULT value_type* RPAR)*
   ;
 
 call_instr_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
-  : CALL_INDIRECT type_use? call_instr_params_instr[body]   { $result = $call_instr_params_instr.result; }
+  : CALL_INDIRECT type_use? call_instr_params_instr[body]
+                                                        { WasmExpressionNode typeIndex;
+                                                          if ($type_use.index != null) {
+                                                            typeIndex = $type_use.index;
+                                                            // FIXME shouldn't be more params/results if (type ...) is used
+                                                          } else {
+                                                            WasmFunctionSignatureNode sig = factory.createSignature(null, -1, $call_instr_params_instr.parArr, $call_instr_params_instr.resArr, false);
+                                                            typeIndex = factory.getTypeFromSig(sig);
+                                                          }
+
+                                                          WasmExpressionNode tableIndex = (WasmExpressionNode) body.pop();
+                                                          int funcIndex = factory.getFuncIndex(typeIndex, tableIndex);
+
+                                                          WasmFunctionSignatureNode sig = factory.getSignature(funcIndex);
+                                                          int numArgs = sig.getNumParams();
+                                                          List<WasmExpressionNode> params = new ArrayList<>();
+                                                          // build this list in case of error
+                                                          ArrayList<String> wrongArgTypes = new ArrayList<>();
+                                                          Boolean error = false; // error flag
+
+                                                          for (int i = 0; i < numArgs; i++) {
+                                                            // typecheck, proceed if ok otherwise error
+                                                            WasmExpressionNode node = (WasmExpressionNode) body.pop();
+                                                            String expectedType = sig.getParamTypeAt(i);
+                                                            String actualType = factory.getTypeString(node);
+                                                            if (expectedType.compareTo(actualType) == 0) {
+                                                              params.add(node);
+                                                            } else {
+                                                              error = true;
+                                                            }
+                                                            wrongArgTypes.add(0, actualType);
+                                                          }
+
+                                                          if (error) {
+                                                            // build error string
+                                                            ArrayList<String> expArgTypes = new ArrayList<String>();
+                                                            for (int i = 0; i < numArgs; i++) {
+                                                              expArgTypes.add(0, sig.getParamTypeAt(i));
+                                                            }
+                                                            String msg = "invalid module: type mismatch: operator requires " + expArgTypes + " but stack has " + wrongArgTypes;
+                                                            SemErr($CALL_INDIRECT, msg);
+                                                          }
+
+                                                          $result = factory.createCallIndirect(funcIndex, params);
+                                                        }
   ;
 
-call_instr_params_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
-  : (
-    LPAR PARAM value_type* RPAR
+call_instr_params_instr [Stack<WasmStatementNode> body] returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  :                                                     { ArrayList<String> parArr = new ArrayList<String>(); }
+    (
+    LPAR PARAM (value_type                              { parArr.add($value_type.start.getText()); }
+               )* RPAR
     )*
-    call_instr_results_instr[body]                      { $result = $call_instr_results_instr.result; }
+    call_instr_results_instr[body]                      { $parArr = parArr;
+                                                          $resArr = $call_instr_results_instr.resArr; }
   ;
 
-call_instr_results_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
-  : (
-    LPAR RESULT value_type* RPAR
-    )*
-    instr[body]                                         { $result = $instr.result; }
+call_instr_results_instr [Stack<WasmStatementNode> body] returns [ArrayList<String> resArr]
+  :                                                     { ArrayList<String> resArr = new ArrayList<String>(); }
+    (
+    LPAR RESULT (value_type                             { resArr.add($value_type.start.getText()); }
+                )* RPAR
+    )*                                                  { $resArr = resArr; }
+    //instr[body]                                         { $result = $instr.result; } // FIXME breaks if remove? what happens to body??
   ;
 
 block_instr returns [WasmStatementNode result]
@@ -494,7 +551,7 @@ instr_list [Stack<WasmStatementNode> body] returns [Stack<WasmStatementNode> res
   : (
     instr[body]                                 { body.push($instr.result); }
     )*
-    call_instr[body]?                           { if ($call_instr.start != null) body.push($call_instr.result); }
+    //call_instr[body]?                           { if ($call_instr.start != null) body.push($call_instr.result); } // TODO why at end?
                                                 { $result = body; }
   ;
 
@@ -540,7 +597,7 @@ func_fields_body returns [WasmStatementNode result]
   : (
     LPAR PARAM
     (
-    value_type                                  { factory.addFormalParameter(null); }
+    value_type                                  { factory.addFormalParameter(null); } // FIXME can't be null
     )*
     RPAR
     |
@@ -581,7 +638,7 @@ elem returns [WasmStatementNode result]
                                                       try {
                                                         funcIndex = Integer.parseUnsignedInt(funcId);
                                                       } catch (NumberFormatException e) {
-                                                        funcIndex = factory.getIndex(funcId);
+                                                        funcIndex = factory.getFuncIndex(funcId);
                                                       }
                                                       funcRefs.add(funcIndex);
                                                       }

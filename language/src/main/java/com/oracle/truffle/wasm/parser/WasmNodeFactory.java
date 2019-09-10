@@ -47,7 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.lang.Integer;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltin;
 import com.oracle.truffle.wasm.builtins.WasmPrintlnBuiltinFactory;
@@ -63,9 +64,6 @@ import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.wasm.WasmLanguage;
@@ -113,6 +111,7 @@ public class WasmNodeFactory {
             this.indices = new HashMap<>();
             if (outer != null) {
                 locals.putAll(outer.locals);
+                indices.putAll(outer.indices);
             }
         }
     }
@@ -139,7 +138,7 @@ public class WasmNodeFactory {
     private int parameterCount;
     private int localCount;
     private int globalCount = 0;
-    private int functionCount = 0; // FIXME was 14... is there a fxnl difference?
+    private int functionCount = 0;
     private FrameDescriptor frameDescriptor;
     private List<WasmStatementNode> methodNodes;
 
@@ -161,9 +160,11 @@ public class WasmNodeFactory {
         return allFunctions;
     }
 
-    public Integer getIndex(String name) {
+    public Integer getFuncIndex(String name) {
         return funcIndices.get(name);
     }
+
+    public Integer getTypeIndex(String name) { return typeIndices.get(name); }
 
     public void startFunction(Token nameToken, Token bodyStartToken) {
         assert functionStartPos == 0;
@@ -199,6 +200,7 @@ public class WasmNodeFactory {
         if (nameToken == null) {
             assignment = createAssignment(createIndexLiteral(null, false), readArg, parameterCount);
         } else {
+            lexicalScope.indices.put(nameToken.getText(), parameterCount);
             assignment = createAssignment(createStringLiteral(nameToken, false), readArg, parameterCount);
         }
         methodNodes.add(assignment);
@@ -233,7 +235,7 @@ public class WasmNodeFactory {
     }
 
     public void startBlock() {
-        lexicalScope = new LexicalScope(lexicalScope);
+        lexicalScope = new LexicalScope(lexicalScope); // should create nesting of lexicalScopes... shouldn't erase previous vars (maybe also have to check outer scope for param values?)
     }
 
     public WasmStatementNode finishBlock(List<WasmStatementNode> bodyNodes, int startPos, int length) {
@@ -277,8 +279,7 @@ public class WasmNodeFactory {
      * @param paramsArray
      * @param resultsArray
      */
-
-    public void createType(Token nameToken, int typeIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
+    public WasmFunctionSignatureNode createType(Token nameToken, int typeIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
         final WasmFunctionSignatureNode typeSignatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
 
         if (nameToken != null) {
@@ -287,6 +288,7 @@ public class WasmNodeFactory {
         }
 
         typeMap.put(typeIndex, typeSignatureNode);
+        return typeSignatureNode;
     }
 
     /**
@@ -295,9 +297,37 @@ public class WasmNodeFactory {
      * @param node
      * @param typeIndex
      */
-
     public void registerType(WasmFunctionSignatureNode node, int typeIndex) {
         typeMap.put(typeIndex, node);
+    }
+
+    /**
+     * Gets signature of respective type for type checking during a call_indirect
+     *
+     * @param typeIndex
+     * @return
+     */
+    public WasmFunctionSignatureNode getType(int typeIndex) {
+        return typeMap.get(typeIndex);
+    }
+
+    /**
+     * Gets type of signature for type checking during a call_indirect
+     *
+     * @param signatureNode
+     * @return
+     */
+    public WasmIntegerLiteralNode getTypeFromSig(WasmFunctionSignatureNode signatureNode) {
+        boolean valid = typeMap.containsValue(signatureNode);
+        int typeIndex = -1;
+        if (valid) { // FIXME more efficient way to do this?
+            int size = typeMap.size();
+            for (int i = 0; i < size; i++) {
+                if (signatureNode.equals(typeMap.get(Integer.valueOf(i)))) typeIndex = i;
+            }
+        }
+
+        return new WasmIntegerLiteralNode(typeIndex); // box for dynamic type checking
     }
 
     /**
@@ -309,16 +339,16 @@ public class WasmNodeFactory {
      * @param paramsArray
      * @param resultsArray
      */
-
-    public void createSignature(Token nameToken, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
+    public WasmFunctionSignatureNode createSignature(Token nameToken, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray, boolean register) {
         final WasmFunctionSignatureNode funcSignatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
 
-        if (nameToken != null) {
+        if (nameToken != null && register) {
             srcFromToken(funcSignatureNode, nameToken);
             funcIndices.put(nameToken.getText(), funcIndex);
         }
 
-        signatureMap.put(funcIndex, funcSignatureNode);
+        if (register) signatureMap.put(funcIndex, funcSignatureNode);
+        return funcSignatureNode;
     }
 
     public WasmFunctionSignatureNode getSignature(Integer funcIndex) {
@@ -766,17 +796,46 @@ public class WasmNodeFactory {
         }
         final WasmExpressionNode result = new WasmInvokeNode(functionNode, parameterNodes.toArray(new WasmExpressionNode[parameterNodes.size()]));
 
-        final int startPos = functionNode.getSourceCharIndex();
-        final int endPos = finalToken.getStartIndex() + finalToken.getText().length();
-        result.setSourceSection(startPos, endPos - startPos); // FIXME
-        result.addExpressionTag();
+        if (finalToken != null) {
+            final int startPos = functionNode.getSourceCharIndex();
+            final int endPos = finalToken.getStartIndex() + finalToken.getText().length();
+            result.setSourceSection(startPos, endPos - startPos);
+            result.addExpressionTag();
+        }
 
         return result;
     }
 
-    public WasmExpressionNode createCallIndirect() {
-        // TODO lookup fxn table
-        return null;
+    public int getFuncIndex(WasmExpressionNode typeIndexNode, WasmExpressionNode tableIndexNode) {
+        int typeIndex;
+        int tableIndex;
+        try {
+            typeIndex = typeIndexNode.executeInt(null);
+            tableIndex = tableIndexNode.executeInt(null); //(VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameInstance.FrameAccess.READ_ONLY));
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException("unexpected result while trying to resolve indices for call_indirect: " + e);
+        }
+
+        int funcIndex;
+        try {
+            funcIndex = language.getContextReference().get().getTableRegistry().getTableObject().readElement(tableIndex);
+        } catch (InvalidArrayIndexException e) {
+            throw new RuntimeException("invalid array index access in table: " + e);
+        }
+
+        WasmFunctionSignatureNode expSig = typeMap.get(typeIndex);
+        WasmFunctionSignatureNode actSig = signatureMap.get(funcIndex);
+
+        if (!expSig.equals(actSig)) {
+            throw new RuntimeException("call_indirect: expected and actual signatures do not match");
+        }
+
+        return funcIndex;
+    }
+
+    public WasmExpressionNode createCallIndirect(int funcIndex, List<WasmExpressionNode> parameterNodes) {
+        WasmIndexLiteralNode indexNode = new WasmIndexLiteralNode(funcIndex);
+        return createCall(createRead(indexNode, true), parameterNodes, null); // TODO need paramNodes
     }
 
     /**
@@ -885,7 +944,7 @@ public class WasmNodeFactory {
             /* Read of a local variable. */
             result = WasmReadLocalVariableNodeGen.create(frameSlot);
         } else {
-            /* Read of a global name. In our language, the only global names are functions. */
+            /* Read of a global name. */
             if (function) {
                 result = new WasmFunctionLiteralNode(language, name, index);
             }
@@ -893,7 +952,9 @@ public class WasmNodeFactory {
                 result = new WasmReadGlobalVariableNode(language, name, index);
             }
         }
-        result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
+        if (nameNode.getSourceCharIndex() >= 0) {
+            result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
+        }
         result.addExpressionTag();
         return result;
     }
@@ -942,6 +1003,10 @@ public class WasmNodeFactory {
         }
         result.addExpressionTag();
         return result;
+    }
+
+    public WasmExpressionNode createIndexLiteral(Integer index) {
+        return new WasmIndexLiteralNode(Integer.valueOf(index));
     }
 
     public WasmExpressionNode createStringLiteral(Token literalToken, boolean removeQuotes) {

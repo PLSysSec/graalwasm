@@ -35,6 +35,34 @@ public final class WasmFunctionSignatureNode extends WasmStatementNode {
 
     public ArrayList<String> getResults() { return results; }
 
+    public boolean equals(WasmFunctionSignatureNode node) {
+        int parLen1 = this.getNumParams();
+        int parLen2 = node.getNumParams();
+        if (parLen1 != parLen2) return false;
+
+        int resLen1 = this.getNumResults();
+        int resLen2 = node.getNumResults();
+        if (resLen1 != resLen2) return false;
+
+        ArrayList<String> p1 = this.getParams();
+        ArrayList<String> p2 = node.getParams();
+        for (int i = 0; i < parLen1; i++) {
+            String s1 = p1.get(i);
+            String s2 = p2.get(i);
+            if (s2.compareTo(s2) != 0) return false;
+        }
+
+        ArrayList<String> r1 = this.getResults();
+        ArrayList<String> r2 = node.getResults();
+        for (int i = 0; i < resLen1; i++) {
+            String s1 = r1.get(i);
+            String s2 = r2.get(i);
+            if (s2.compareTo(s2) != 0) return false;
+        }
+
+        return true;
+    }
+
     public void executeVoid(VirtualFrame virtualFrame) {
         return;
     }

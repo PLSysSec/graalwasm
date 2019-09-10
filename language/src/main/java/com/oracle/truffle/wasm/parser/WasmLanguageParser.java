@@ -493,7 +493,7 @@ public class WasmLanguageParser extends Parser {
 			}
 			setState(181);
 			((FuncFPContext)_localctx).func_fieldsFP = func_fieldsFP();
-			 factory.createSignature((((FuncFPContext)_localctx).bind_var!=null?(((FuncFPContext)_localctx).bind_var.start):null), numFunc++, ((FuncFPContext)_localctx).func_fieldsFP.parArr, ((FuncFPContext)_localctx).func_fieldsFP.resArr); 
+			 factory.createSignature((((FuncFPContext)_localctx).bind_var!=null?(((FuncFPContext)_localctx).bind_var.start):null), numFunc++, ((FuncFPContext)_localctx).func_fieldsFP.parArr, ((FuncFPContext)_localctx).func_fieldsFP.resArr, true); 
 			setState(183);
 			match(RPAR);
 			}
@@ -1233,7 +1233,8 @@ public class WasmLanguageParser extends Parser {
 	}
 
 	public static class Type_useContext extends ParserRuleContext {
-		public Integer typeIndex;
+		public WasmExpressionNode index;
+		public VarContext var;
 		public TerminalNode LPAR() { return getToken(WasmLanguageParser.LPAR, 0); }
 		public TerminalNode TYPE() { return getToken(WasmLanguageParser.TYPE, 0); }
 		public VarContext var() {
@@ -1257,10 +1258,18 @@ public class WasmLanguageParser extends Parser {
 			setState(305);
 			match(TYPE);
 			setState(306);
-			var();
+			((Type_useContext)_localctx).var = var();
 			setState(307);
 			match(RPAR);
-			 
+			 ((Type_useContext)_localctx).index =  null; // necessary?
+			                                              String id = (((Type_useContext)_localctx).var!=null?(((Type_useContext)_localctx).var.start):null).getText();
+			                                              Integer index;
+			                                              try {
+			                                                index = Integer.parseUnsignedInt(id);
+			                                              } catch (NumberFormatException e) {
+			                                                index = factory.getTypeIndex(id);
+			                                              }
+			                                              ((Type_useContext)_localctx).index =  factory.createIndexLiteral(index); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -1652,7 +1661,7 @@ public class WasmLanguageParser extends Parser {
 				                                                          try {
 				                                                            funcIndex = Integer.parseUnsignedInt(funcId);
 				                                                          } catch (NumberFormatException e) {
-				                                                            funcIndex = factory.getIndex(funcId);
+				                                                            funcIndex = factory.getFuncIndex(funcId);
 				                                                            index = false;
 				                                                          }
 
@@ -1893,7 +1902,6 @@ public class WasmLanguageParser extends Parser {
 	public static class Call_instrContext extends ParserRuleContext {
 		public Stack<WasmStatementNode> body;
 		public WasmStatementNode result;
-		public Call_instr_paramsContext call_instr_params;
 		public TerminalNode CALL_INDIRECT() { return getToken(WasmLanguageParser.CALL_INDIRECT, 0); }
 		public Call_instr_paramsContext call_instr_params() {
 			return getRuleContext(Call_instr_paramsContext.class,0);
@@ -1928,8 +1936,7 @@ public class WasmLanguageParser extends Parser {
 				break;
 			}
 			setState(413);
-			((Call_instrContext)_localctx).call_instr_params = call_instr_params(body);
-			 ((Call_instrContext)_localctx).result =  ((Call_instrContext)_localctx).call_instr_params.result; 
+			call_instr_params(body);
 			}
 		}
 		catch (RecognitionException re) {
@@ -1984,69 +1991,69 @@ public class WasmLanguageParser extends Parser {
 			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(427);
+			setState(426);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,28,_ctx);
 			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt==1 ) {
 					{
 					{
-					setState(416);
+					setState(415);
 					match(LPAR);
-					setState(417);
+					setState(416);
 					match(PARAM);
-					setState(421);
+					setState(420);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
 					while (_la==VALUE_TYPE) {
 						{
 						{
-						setState(418);
+						setState(417);
 						value_type();
 						}
 						}
-						setState(423);
+						setState(422);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
 					}
-					setState(424);
+					setState(423);
 					match(RPAR);
 					}
 					} 
 				}
-				setState(429);
+				setState(428);
 				_errHandler.sync(this);
 				_alt = getInterpreter().adaptivePredict(_input,28,_ctx);
 			}
-			setState(441);
+			setState(440);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==LPAR) {
 				{
 				{
-				setState(430);
+				setState(429);
 				match(LPAR);
-				setState(431);
+				setState(430);
 				match(RESULT);
-				setState(435);
+				setState(434);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				while (_la==VALUE_TYPE) {
 					{
 					{
-					setState(432);
+					setState(431);
 					value_type();
 					}
 					}
-					setState(437);
+					setState(436);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
 				}
-				setState(438);
+				setState(437);
 				match(RPAR);
 				}
 				}
-				setState(443);
+				setState(442);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
@@ -2066,6 +2073,8 @@ public class WasmLanguageParser extends Parser {
 	public static class Call_instr_instrContext extends ParserRuleContext {
 		public Stack<WasmStatementNode> body;
 		public WasmStatementNode result;
+		public Token CALL_INDIRECT;
+		public Type_useContext type_use;
 		public Call_instr_params_instrContext call_instr_params_instr;
 		public TerminalNode CALL_INDIRECT() { return getToken(WasmLanguageParser.CALL_INDIRECT, 0); }
 		public Call_instr_params_instrContext call_instr_params_instr() {
@@ -2088,21 +2097,64 @@ public class WasmLanguageParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(444);
-			match(CALL_INDIRECT);
-			setState(446);
+			setState(443);
+			((Call_instr_instrContext)_localctx).CALL_INDIRECT = match(CALL_INDIRECT);
+			setState(445);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,31,_ctx) ) {
 			case 1:
 				{
-				setState(445);
-				type_use();
+				setState(444);
+				((Call_instr_instrContext)_localctx).type_use = type_use();
 				}
 				break;
 			}
-			setState(448);
+			setState(447);
 			((Call_instr_instrContext)_localctx).call_instr_params_instr = call_instr_params_instr(body);
-			 ((Call_instr_instrContext)_localctx).result =  ((Call_instr_instrContext)_localctx).call_instr_params_instr.result; 
+			 WasmExpressionNode typeIndex;
+			                                                          if (((Call_instr_instrContext)_localctx).type_use.index != null) {
+			                                                            typeIndex = ((Call_instr_instrContext)_localctx).type_use.index;
+			                                                            // FIXME shouldn't be more params/results if (type ...) is used
+			                                                          } else {
+			                                                            WasmFunctionSignatureNode sig = factory.createSignature(null, -1, ((Call_instr_instrContext)_localctx).call_instr_params_instr.parArr, ((Call_instr_instrContext)_localctx).call_instr_params_instr.resArr, false);
+			                                                            typeIndex = factory.getTypeFromSig(sig);
+			                                                          }
+
+			                                                          WasmExpressionNode tableIndex = (WasmExpressionNode) body.pop();
+			                                                          int funcIndex = factory.getFuncIndex(typeIndex, tableIndex);
+
+			                                                          WasmFunctionSignatureNode sig = factory.getSignature(funcIndex);
+			                                                          int numArgs = sig.getNumParams();
+			                                                          List<WasmExpressionNode> params = new ArrayList<>();
+			                                                          // build this list in case of error
+			                                                          ArrayList<String> wrongArgTypes = new ArrayList<>();
+			                                                          Boolean error = false; // error flag
+
+			                                                          for (int i = 0; i < numArgs; i++) {
+			                                                            // typecheck, proceed if ok otherwise error
+			                                                            WasmExpressionNode node = (WasmExpressionNode) body.pop();
+			                                                            String expectedType = sig.getParamTypeAt(i);
+			                                                            String actualType = factory.getTypeString(node);
+			                                                            if (expectedType.compareTo(actualType) == 0) {
+			                                                              params.add(node);
+			                                                            } else {
+			                                                              error = true;
+			                                                            }
+			                                                            wrongArgTypes.add(0, actualType);
+			                                                          }
+
+			                                                          if (error) {
+			                                                            // build error string
+			                                                            ArrayList<String> expArgTypes = new ArrayList<String>();
+			                                                            for (int i = 0; i < numArgs; i++) {
+			                                                              expArgTypes.add(0, sig.getParamTypeAt(i));
+			                                                            }
+			                                                            String msg = "invalid module: type mismatch: operator requires " + expArgTypes + " but stack has " + wrongArgTypes;
+			                                                            SemErr(((Call_instr_instrContext)_localctx).CALL_INDIRECT, msg);
+			                                                          }
+
+			                                                          ((Call_instr_instrContext)_localctx).result =  factory.createCallIndirect(funcIndex, params);
+			                                                        
 			}
 		}
 		catch (RecognitionException re) {
@@ -2118,7 +2170,9 @@ public class WasmLanguageParser extends Parser {
 
 	public static class Call_instr_params_instrContext extends ParserRuleContext {
 		public Stack<WasmStatementNode> body;
-		public WasmStatementNode result;
+		public ArrayList<String> parArr;
+		public ArrayList<String> resArr;
+		public Value_typeContext value_type;
 		public Call_instr_results_instrContext call_instr_results_instr;
 		public Call_instr_results_instrContext call_instr_results_instr() {
 			return getRuleContext(Call_instr_results_instrContext.class,0);
@@ -2157,7 +2211,8 @@ public class WasmLanguageParser extends Parser {
 			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(462);
+			 ArrayList<String> parArr = new ArrayList<String>(); 
+			setState(464);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,33,_ctx);
 			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
@@ -2168,32 +2223,34 @@ public class WasmLanguageParser extends Parser {
 					match(LPAR);
 					setState(452);
 					match(PARAM);
-					setState(456);
+					setState(458);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
 					while (_la==VALUE_TYPE) {
 						{
 						{
 						setState(453);
-						value_type();
+						((Call_instr_params_instrContext)_localctx).value_type = value_type();
+						 parArr.add((((Call_instr_params_instrContext)_localctx).value_type!=null?(((Call_instr_params_instrContext)_localctx).value_type.start):null).getText()); 
 						}
 						}
-						setState(458);
+						setState(460);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
 					}
-					setState(459);
+					setState(461);
 					match(RPAR);
 					}
 					} 
 				}
-				setState(464);
+				setState(466);
 				_errHandler.sync(this);
 				_alt = getInterpreter().adaptivePredict(_input,33,_ctx);
 			}
-			setState(465);
+			setState(467);
 			((Call_instr_params_instrContext)_localctx).call_instr_results_instr = call_instr_results_instr(body);
-			 ((Call_instr_params_instrContext)_localctx).result =  ((Call_instr_params_instrContext)_localctx).call_instr_results_instr.result; 
+			 ((Call_instr_params_instrContext)_localctx).parArr =  parArr;
+			                                                          ((Call_instr_params_instrContext)_localctx).resArr =  ((Call_instr_params_instrContext)_localctx).call_instr_results_instr.resArr; 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2209,11 +2266,8 @@ public class WasmLanguageParser extends Parser {
 
 	public static class Call_instr_results_instrContext extends ParserRuleContext {
 		public Stack<WasmStatementNode> body;
-		public WasmStatementNode result;
-		public InstrContext instr;
-		public InstrContext instr() {
-			return getRuleContext(InstrContext.class,0);
-		}
+		public ArrayList<String> resArr;
+		public Value_typeContext value_type;
 		public List<TerminalNode> LPAR() { return getTokens(WasmLanguageParser.LPAR); }
 		public TerminalNode LPAR(int i) {
 			return getToken(WasmLanguageParser.LPAR, i);
@@ -2247,41 +2301,41 @@ public class WasmLanguageParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(479);
+			 ArrayList<String> resArr = new ArrayList<String>(); 
+			setState(484);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==LPAR) {
 				{
 				{
-				setState(468);
+				setState(471);
 				match(LPAR);
-				setState(469);
+				setState(472);
 				match(RESULT);
-				setState(473);
+				setState(478);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				while (_la==VALUE_TYPE) {
 					{
 					{
-					setState(470);
-					value_type();
+					setState(473);
+					((Call_instr_results_instrContext)_localctx).value_type = value_type();
+					 resArr.add((((Call_instr_results_instrContext)_localctx).value_type!=null?(((Call_instr_results_instrContext)_localctx).value_type.start):null).getText()); 
 					}
 					}
-					setState(475);
+					setState(480);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
 				}
-				setState(476);
+				setState(481);
 				match(RPAR);
 				}
 				}
-				setState(481);
+				setState(486);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
-			setState(482);
-			((Call_instr_results_instrContext)_localctx).instr = instr(body);
-			 ((Call_instr_results_instrContext)_localctx).result =  ((Call_instr_results_instrContext)_localctx).instr.result; 
+			 ((Call_instr_results_instrContext)_localctx).resArr =  resArr; 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2330,14 +2384,14 @@ public class WasmLanguageParser extends Parser {
 		enterRule(_localctx, 58, RULE_block_instr);
 		int _la;
 		try {
-			setState(516);
+			setState(520);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case BLOCK:
 			case LOOP:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(485);
+				setState(489);
 				((Block_instrContext)_localctx).l = _input.LT(1);
 				_la = _input.LA(1);
 				if ( !(_la==BLOCK || _la==LOOP) ) {
@@ -2348,27 +2402,27 @@ public class WasmLanguageParser extends Parser {
 					_errHandler.reportMatch(this);
 					consume();
 				}
-				setState(487);
+				setState(491);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				if (_la==VAR) {
 					{
-					setState(486);
+					setState(490);
 					((Block_instrContext)_localctx).bv1 = bind_var();
 					}
 				}
 
 				 if ((((Block_instrContext)_localctx).l!=null?((Block_instrContext)_localctx).l.getText():null).compareTo("block") == 0 && (((Block_instrContext)_localctx).bv1!=null?(((Block_instrContext)_localctx).bv1.start):null) != null) { SemErr((((Block_instrContext)_localctx).bv1!=null?(((Block_instrContext)_localctx).bv1.start):null), "block has label at beginning"); } 
-				setState(490);
+				setState(494);
 				((Block_instrContext)_localctx).block = block();
-				setState(491);
+				setState(495);
 				match(END);
-				setState(493);
+				setState(497);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				if (_la==VAR) {
 					{
-					setState(492);
+					setState(496);
 					((Block_instrContext)_localctx).bv2 = bind_var();
 					}
 				}
@@ -2380,52 +2434,52 @@ public class WasmLanguageParser extends Parser {
 			case IF:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(497);
+				setState(501);
 				match(IF);
-				setState(499);
+				setState(503);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				if (_la==VAR) {
 					{
-					setState(498);
+					setState(502);
 					bind_var();
 					}
 				}
 
-				setState(501);
+				setState(505);
 				block();
-				setState(508);
+				setState(512);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				if (_la==ELSE) {
 					{
 					 factory.startBlock();
 					                                          Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); 
-					setState(503);
+					setState(507);
 					match(ELSE);
-					setState(505);
+					setState(509);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
 					if (_la==VAR) {
 						{
-						setState(504);
+						setState(508);
 						bind_var();
 						}
 					}
 
-					setState(507);
+					setState(511);
 					((Block_instrContext)_localctx).res = instr_list(body);
 					}
 				}
 
-				setState(510);
+				setState(514);
 				match(END);
-				setState(512);
+				setState(516);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 				if (_la==VAR) {
 					{
-					setState(511);
+					setState(515);
 					bind_var();
 					}
 				}
@@ -2467,13 +2521,13 @@ public class WasmLanguageParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(518);
+			setState(522);
 			match(LPAR);
-			setState(519);
+			setState(523);
 			match(RESULT);
-			setState(520);
+			setState(524);
 			value_type();
-			setState(521);
+			setState(525);
 			match(RPAR);
 			}
 		}
@@ -2513,17 +2567,17 @@ public class WasmLanguageParser extends Parser {
 			{
 			 factory.startBlock();
 			                                                          Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); 
-			setState(525);
+			setState(529);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			if (_la==LPAR) {
 				{
-				setState(524);
+				setState(528);
 				((BlockContext)_localctx).t = block_type();
 				}
 			}
 
-			setState(527);
+			setState(531);
 			((BlockContext)_localctx).res = instr_list(body);
 			 if ((((BlockContext)_localctx).t!=null?(((BlockContext)_localctx).t.start):null) != null) {}
 			                                                          ((BlockContext)_localctx).result =  factory.finishBlock(new ArrayList(((BlockContext)_localctx).res.result), (((BlockContext)_localctx).res!=null?(((BlockContext)_localctx).res.start):null).getStartIndex(), (((BlockContext)_localctx).res!=null?(((BlockContext)_localctx).res.stop):null).getStopIndex() - (((BlockContext)_localctx).res!=null?(((BlockContext)_localctx).res.start):null).getStartIndex() + 1); 
@@ -2544,15 +2598,11 @@ public class WasmLanguageParser extends Parser {
 		public Stack<WasmStatementNode> body;
 		public Stack<WasmStatementNode> result;
 		public InstrContext instr;
-		public Call_instrContext call_instr;
 		public List<InstrContext> instr() {
 			return getRuleContexts(InstrContext.class);
 		}
 		public InstrContext instr(int i) {
 			return getRuleContext(InstrContext.class,i);
-		}
-		public Call_instrContext call_instr() {
-			return getRuleContext(Call_instrContext.class,0);
 		}
 		public Instr_listContext(ParserRuleContext parent, int invokingState) { super(parent, invokingState); }
 		public Instr_listContext(ParserRuleContext parent, int invokingState, Stack<WasmStatementNode> body) {
@@ -2567,37 +2617,23 @@ public class WasmLanguageParser extends Parser {
 		enterRule(_localctx, 64, RULE_instr_list);
 		int _la;
 		try {
-			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(535);
-			_errHandler.sync(this);
-			_alt = getInterpreter().adaptivePredict(_input,44,_ctx);
-			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
-				if ( _alt==1 ) {
-					{
-					{
-					setState(530);
-					((Instr_listContext)_localctx).instr = instr(body);
-					 body.push(((Instr_listContext)_localctx).instr.result); 
-					}
-					} 
-				}
-				setState(537);
-				_errHandler.sync(this);
-				_alt = getInterpreter().adaptivePredict(_input,44,_ctx);
-			}
 			setState(539);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if (_la==CALL_INDIRECT) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << CONST) | (1L << PRINT) | (1L << NOP) | (1L << UNREACHABLE) | (1L << DROP) | (1L << BLOCK) | (1L << LOOP) | (1L << BR) | (1L << BR_IF) | (1L << BR_TABLE) | (1L << RETURN) | (1L << IF) | (1L << SELECT) | (1L << CALL) | (1L << CALL_INDIRECT) | (1L << LOCAL_GET) | (1L << LOCAL_SET) | (1L << LOCAL_TEE) | (1L << GLOBAL_GET) | (1L << GLOBAL_SET) | (1L << LOAD) | (1L << STORE) | (1L << UNARY) | (1L << BINARY) | (1L << TEST) | (1L << COMPARE) | (1L << CONVERT) | (1L << MEMORY_SIZE) | (1L << MEMORY_GROW))) != 0)) {
 				{
-				setState(538);
-				((Instr_listContext)_localctx).call_instr = call_instr(body);
+				{
+				setState(534);
+				((Instr_listContext)_localctx).instr = instr(body);
+				 body.push(((Instr_listContext)_localctx).instr.result); 
 				}
+				}
+				setState(541);
+				_errHandler.sync(this);
+				_la = _input.LA(1);
 			}
-
-			 if ((((Instr_listContext)_localctx).call_instr!=null?(((Instr_listContext)_localctx).call_instr.start):null) != null) body.push(((Instr_listContext)_localctx).call_instr.result); 
 			 ((Instr_listContext)_localctx).result =  body; 
 			}
 		}
@@ -2745,13 +2781,13 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(576);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,49,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,48,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
 				setState(560);
 				_errHandler.sync(this);
-				switch ( getInterpreter().adaptivePredict(_input,47,_ctx) ) {
+				switch ( getInterpreter().adaptivePredict(_input,46,_ctx) ) {
 				case 1:
 					{
 					setState(559);
@@ -2771,7 +2807,7 @@ public class WasmLanguageParser extends Parser {
 				inline_import();
 				setState(567);
 				_errHandler.sync(this);
-				switch ( getInterpreter().adaptivePredict(_input,48,_ctx) ) {
+				switch ( getInterpreter().adaptivePredict(_input,47,_ctx) ) {
 				case 1:
 					{
 					setState(566);
@@ -2840,7 +2876,7 @@ public class WasmLanguageParser extends Parser {
 			{
 			setState(593);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,51,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,50,_ctx) ) {
 			case 1:
 				{
 				setState(578);
@@ -3019,13 +3055,13 @@ public class WasmLanguageParser extends Parser {
 			{
 			setState(632);
 			_errHandler.sync(this);
-			_alt = getInterpreter().adaptivePredict(_input,56,_ctx);
+			_alt = getInterpreter().adaptivePredict(_input,55,_ctx);
 			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt==1 ) {
 					{
 					setState(630);
 					_errHandler.sync(this);
-					switch ( getInterpreter().adaptivePredict(_input,55,_ctx) ) {
+					switch ( getInterpreter().adaptivePredict(_input,54,_ctx) ) {
 					case 1:
 						{
 						setState(612);
@@ -3071,7 +3107,7 @@ public class WasmLanguageParser extends Parser {
 				}
 				setState(634);
 				_errHandler.sync(this);
-				_alt = getInterpreter().adaptivePredict(_input,56,_ctx);
+				_alt = getInterpreter().adaptivePredict(_input,55,_ctx);
 			}
 			setState(635);
 			((Func_fields_bodyContext)_localctx).func_result_body = func_result_body();
@@ -3115,7 +3151,7 @@ public class WasmLanguageParser extends Parser {
 			{
 			setState(643);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,57,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,56,_ctx) ) {
 			case 1:
 				{
 				setState(638);
@@ -3200,7 +3236,7 @@ public class WasmLanguageParser extends Parser {
 				{
 				setState(666);
 				_errHandler.sync(this);
-				switch ( getInterpreter().adaptivePredict(_input,59,_ctx) ) {
+				switch ( getInterpreter().adaptivePredict(_input,58,_ctx) ) {
 				case 1:
 					{
 					setState(649);
@@ -3365,7 +3401,7 @@ public class WasmLanguageParser extends Parser {
 				                                                      try {
 				                                                        funcIndex = Integer.parseUnsignedInt(funcId);
 				                                                      } catch (NumberFormatException e) {
-				                                                        funcIndex = factory.getIndex(funcId);
+				                                                        funcIndex = factory.getFuncIndex(funcId);
 				                                                      }
 				                                                      funcRefs.add(funcIndex);
 				                                                      
@@ -3491,7 +3527,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(727);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,65,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,64,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -3725,7 +3761,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(770);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,70,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,69,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -3882,7 +3918,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(791);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,72,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,71,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -3963,7 +3999,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(833);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,78,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,77,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -4209,7 +4245,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(868);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,79,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,78,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -4536,7 +4572,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(908);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,81,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,80,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -4714,7 +4750,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(937);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,86,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,85,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -4805,7 +4841,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(956);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,89,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,88,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -4900,7 +4936,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(1010);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,90,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,89,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -5078,7 +5114,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(1024);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,92,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,91,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -5170,7 +5206,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(1058);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,98,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,97,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -5400,7 +5436,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(1085);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,102,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,101,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -5480,7 +5516,7 @@ public class WasmLanguageParser extends Parser {
 		try {
 			setState(1097);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,104,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,103,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
@@ -5555,21 +5591,21 @@ public class WasmLanguageParser extends Parser {
 		"\n\31\3\31\5\31\u017d\n\31\3\31\3\31\3\31\5\31\u0182\n\31\3\31\5\31\u0185"+
 		"\n\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31\3\31"+
 		"\3\31\3\31\3\31\3\31\3\31\3\31\5\31\u019a\n\31\3\32\3\32\5\32\u019e\n"+
-		"\32\3\32\3\32\3\32\3\33\3\33\3\33\7\33\u01a6\n\33\f\33\16\33\u01a9\13"+
-		"\33\3\33\7\33\u01ac\n\33\f\33\16\33\u01af\13\33\3\33\3\33\3\33\7\33\u01b4"+
-		"\n\33\f\33\16\33\u01b7\13\33\3\33\7\33\u01ba\n\33\f\33\16\33\u01bd\13"+
-		"\33\3\34\3\34\5\34\u01c1\n\34\3\34\3\34\3\34\3\35\3\35\3\35\7\35\u01c9"+
-		"\n\35\f\35\16\35\u01cc\13\35\3\35\7\35\u01cf\n\35\f\35\16\35\u01d2\13"+
-		"\35\3\35\3\35\3\35\3\36\3\36\3\36\7\36\u01da\n\36\f\36\16\36\u01dd\13"+
-		"\36\3\36\7\36\u01e0\n\36\f\36\16\36\u01e3\13\36\3\36\3\36\3\36\3\37\3"+
-		"\37\5\37\u01ea\n\37\3\37\3\37\3\37\3\37\5\37\u01f0\n\37\3\37\3\37\3\37"+
-		"\3\37\5\37\u01f6\n\37\3\37\3\37\3\37\3\37\5\37\u01fc\n\37\3\37\5\37\u01ff"+
-		"\n\37\3\37\3\37\5\37\u0203\n\37\3\37\3\37\5\37\u0207\n\37\3 \3 \3 \3 "+
-		"\3 \3!\3!\5!\u0210\n!\3!\3!\3!\3\"\3\"\3\"\7\"\u0218\n\"\f\"\16\"\u021b"+
-		"\13\"\3\"\5\"\u021e\n\"\3\"\3\"\3\"\3#\3#\3#\3#\3$\3$\3$\3$\5$\u022b\n"+
-		"$\3$\3$\3$\3$\3$\3%\5%\u0233\n%\3%\3%\3%\3%\3%\5%\u023a\n%\3%\3%\3%\3"+
-		"%\3%\3%\3%\5%\u0243\n%\3&\3&\3&\7&\u0248\n&\f&\16&\u024b\13&\3&\3&\3&"+
-		"\3&\3&\3&\3&\5&\u0254\n&\3&\3&\3&\3\'\3\'\3\'\7\'\u025c\n\'\f\'\16\'\u025f"+
+		"\32\3\32\3\32\3\33\3\33\3\33\7\33\u01a5\n\33\f\33\16\33\u01a8\13\33\3"+
+		"\33\7\33\u01ab\n\33\f\33\16\33\u01ae\13\33\3\33\3\33\3\33\7\33\u01b3\n"+
+		"\33\f\33\16\33\u01b6\13\33\3\33\7\33\u01b9\n\33\f\33\16\33\u01bc\13\33"+
+		"\3\34\3\34\5\34\u01c0\n\34\3\34\3\34\3\34\3\35\3\35\3\35\3\35\3\35\3\35"+
+		"\7\35\u01cb\n\35\f\35\16\35\u01ce\13\35\3\35\7\35\u01d1\n\35\f\35\16\35"+
+		"\u01d4\13\35\3\35\3\35\3\35\3\36\3\36\3\36\3\36\3\36\3\36\7\36\u01df\n"+
+		"\36\f\36\16\36\u01e2\13\36\3\36\7\36\u01e5\n\36\f\36\16\36\u01e8\13\36"+
+		"\3\36\3\36\3\37\3\37\5\37\u01ee\n\37\3\37\3\37\3\37\3\37\5\37\u01f4\n"+
+		"\37\3\37\3\37\3\37\3\37\5\37\u01fa\n\37\3\37\3\37\3\37\3\37\5\37\u0200"+
+		"\n\37\3\37\5\37\u0203\n\37\3\37\3\37\5\37\u0207\n\37\3\37\3\37\5\37\u020b"+
+		"\n\37\3 \3 \3 \3 \3 \3!\3!\5!\u0214\n!\3!\3!\3!\3\"\3\"\3\"\7\"\u021c"+
+		"\n\"\f\"\16\"\u021f\13\"\3\"\3\"\3#\3#\3#\3#\3$\3$\3$\3$\5$\u022b\n$\3"+
+		"$\3$\3$\3$\3$\3%\5%\u0233\n%\3%\3%\3%\3%\3%\5%\u023a\n%\3%\3%\3%\3%\3"+
+		"%\3%\3%\5%\u0243\n%\3&\3&\3&\7&\u0248\n&\f&\16&\u024b\13&\3&\3&\3&\3&"+
+		"\3&\3&\3&\5&\u0254\n&\3&\3&\3&\3\'\3\'\3\'\7\'\u025c\n\'\f\'\16\'\u025f"+
 		"\13\'\3\'\7\'\u0262\n\'\f\'\16\'\u0265\13\'\3(\3(\3(\3(\3(\7(\u026c\n"+
 		"(\f(\16(\u026f\13(\3(\3(\3(\3(\3(\3(\3(\3(\7(\u0279\n(\f(\16(\u027c\13"+
 		"(\3(\3(\3(\3)\3)\3)\3)\3)\5)\u0286\n)\3)\3)\3)\3*\3*\3*\3*\7*\u028f\n"+
@@ -5604,14 +5640,14 @@ public class WasmLanguageParser extends Parser {
 		"G\3G\5G\u044c\nG\3G\4\u00a1\u00e9\2H\2\4\6\b\n\f\16\20\22\24\26\30\32"+
 		"\34\36 \"$&(*,.\60\62\64\668:<>@BDFHJLNPRTVXZ\\^`bdfhjlnprtvxz|~\u0080"+
 		"\u0082\u0084\u0086\u0088\u008a\u008c\2\7\3\2\6\7\3\2\5\7\4\2\5\5MM\3\2"+
-		"\21\22\3\2=>\2\u04a9\2\u008e\3\2\2\2\4\u009a\3\2\2\2\6\u00a3\3\2\2\2\b"+
+		"\21\22\3\2=>\2\u04a8\2\u008e\3\2\2\2\4\u009a\3\2\2\2\6\u00a3\3\2\2\2\b"+
 		"\u00a5\3\2\2\2\n\u00b2\3\2\2\2\f\u00bc\3\2\2\2\16\u00c1\3\2\2\2\20\u00dc"+
 		"\3\2\2\2\22\u00ec\3\2\2\2\24\u00ee\3\2\2\2\26\u00f0\3\2\2\2\30\u00f2\3"+
 		"\2\2\2\32\u00f4\3\2\2\2\34\u00ff\3\2\2\2\36\u0101\3\2\2\2 \u0107\3\2\2"+
 		"\2\"\u0125\3\2\2\2$\u012c\3\2\2\2&\u0132\3\2\2\2(\u0138\3\2\2\2*\u013a"+
 		"\3\2\2\2,\u013c\3\2\2\2.\u0147\3\2\2\2\60\u0199\3\2\2\2\62\u019b\3\2\2"+
-		"\2\64\u01ad\3\2\2\2\66\u01be\3\2\2\28\u01d0\3\2\2\2:\u01e1\3\2\2\2<\u0206"+
-		"\3\2\2\2>\u0208\3\2\2\2@\u020d\3\2\2\2B\u0219\3\2\2\2D\u0222\3\2\2\2F"+
+		"\2\64\u01ac\3\2\2\2\66\u01bd\3\2\2\28\u01c4\3\2\2\2:\u01d8\3\2\2\2<\u020a"+
+		"\3\2\2\2>\u020c\3\2\2\2@\u0211\3\2\2\2B\u021d\3\2\2\2D\u0222\3\2\2\2F"+
 		"\u0226\3\2\2\2H\u0242\3\2\2\2J\u0253\3\2\2\2L\u0263\3\2\2\2N\u027a\3\2"+
 		"\2\2P\u0285\3\2\2\2R\u028a\3\2\2\2T\u02a4\3\2\2\2V\u02aa\3\2\2\2X\u02bc"+
 		"\3\2\2\2Z\u02d9\3\2\2\2\\\u02db\3\2\2\2^\u02e9\3\2\2\2`\u0304\3\2\2\2"+
@@ -5712,48 +5748,48 @@ public class WasmLanguageParser extends Parser {
 		"\2\2\u0199\u0193\3\2\2\2\u0199\u0195\3\2\2\2\u0199\u0197\3\2\2\2\u019a"+
 		"\61\3\2\2\2\u019b\u019d\7\35\2\2\u019c\u019e\5&\24\2\u019d\u019c\3\2\2"+
 		"\2\u019d\u019e\3\2\2\2\u019e\u019f\3\2\2\2\u019f\u01a0\5\64\33\2\u01a0"+
-		"\u01a1\b\32\1\2\u01a1\63\3\2\2\2\u01a2\u01a3\7\3\2\2\u01a3\u01a7\7\61"+
-		"\2\2\u01a4\u01a6\5\30\r\2\u01a5\u01a4\3\2\2\2\u01a6\u01a9\3\2\2\2\u01a7"+
-		"\u01a5\3\2\2\2\u01a7\u01a8\3\2\2\2\u01a8\u01aa\3\2\2\2\u01a9\u01a7\3\2"+
-		"\2\2\u01aa\u01ac\7\4\2\2\u01ab\u01a2\3\2\2\2\u01ac\u01af\3\2\2\2\u01ad"+
-		"\u01ab\3\2\2\2\u01ad\u01ae\3\2\2\2\u01ae\u01bb\3\2\2\2\u01af\u01ad\3\2"+
-		"\2\2\u01b0\u01b1\7\3\2\2\u01b1\u01b5\7\62\2\2\u01b2\u01b4\5\30\r\2\u01b3"+
-		"\u01b2\3\2\2\2\u01b4\u01b7\3\2\2\2\u01b5\u01b3\3\2\2\2\u01b5\u01b6\3\2"+
-		"\2\2\u01b6\u01b8\3\2\2\2\u01b7\u01b5\3\2\2\2\u01b8\u01ba\7\4\2\2\u01b9"+
-		"\u01b0\3\2\2\2\u01ba\u01bd\3\2\2\2\u01bb\u01b9\3\2\2\2\u01bb\u01bc\3\2"+
-		"\2\2\u01bc\65\3\2\2\2\u01bd\u01bb\3\2\2\2\u01be\u01c0\7\35\2\2\u01bf\u01c1"+
-		"\5&\24\2\u01c0\u01bf\3\2\2\2\u01c0\u01c1\3\2\2\2\u01c1\u01c2\3\2\2\2\u01c2"+
-		"\u01c3\58\35\2\u01c3\u01c4\b\34\1\2\u01c4\67\3\2\2\2\u01c5\u01c6\7\3\2"+
-		"\2\u01c6\u01ca\7\61\2\2\u01c7\u01c9\5\30\r\2\u01c8\u01c7\3\2\2\2\u01c9"+
-		"\u01cc\3\2\2\2\u01ca\u01c8\3\2\2\2\u01ca\u01cb\3\2\2\2\u01cb\u01cd\3\2"+
-		"\2\2\u01cc\u01ca\3\2\2\2\u01cd\u01cf\7\4\2\2\u01ce\u01c5\3\2\2\2\u01cf"+
-		"\u01d2\3\2\2\2\u01d0\u01ce\3\2\2\2\u01d0\u01d1\3\2\2\2\u01d1\u01d3\3\2"+
-		"\2\2\u01d2\u01d0\3\2\2\2\u01d3\u01d4\5:\36\2\u01d4\u01d5\b\35\1\2\u01d5"+
-		"9\3\2\2\2\u01d6\u01d7\7\3\2\2\u01d7\u01db\7\62\2\2\u01d8\u01da\5\30\r"+
-		"\2\u01d9\u01d8\3\2\2\2\u01da\u01dd\3\2\2\2\u01db\u01d9\3\2\2\2\u01db\u01dc"+
-		"\3\2\2\2\u01dc\u01de\3\2\2\2\u01dd\u01db\3\2\2\2\u01de\u01e0\7\4\2\2\u01df"+
-		"\u01d6\3\2\2\2\u01e0\u01e3\3\2\2\2\u01e1\u01df\3\2\2\2\u01e1\u01e2\3\2"+
-		"\2\2\u01e2\u01e4\3\2\2\2\u01e3\u01e1\3\2\2\2\u01e4\u01e5\5.\30\2\u01e5"+
-		"\u01e6\b\36\1\2\u01e6;\3\2\2\2\u01e7\u01e9\t\5\2\2\u01e8\u01ea\5,\27\2"+
-		"\u01e9\u01e8\3\2\2\2\u01e9\u01ea\3\2\2\2\u01ea\u01eb\3\2\2\2\u01eb\u01ec"+
-		"\b\37\1\2\u01ec\u01ed\5@!\2\u01ed\u01ef\7\23\2\2\u01ee\u01f0\5,\27\2\u01ef"+
-		"\u01ee\3\2\2\2\u01ef\u01f0\3\2\2\2\u01f0\u01f1\3\2\2\2\u01f1\u01f2\b\37"+
-		"\1\2\u01f2\u0207\3\2\2\2\u01f3\u01f5\7\30\2\2\u01f4\u01f6\5,\27\2\u01f5"+
-		"\u01f4\3\2\2\2\u01f5\u01f6\3\2\2\2\u01f6\u01f7\3\2\2\2\u01f7\u01fe\5@"+
-		"!\2\u01f8\u01f9\b\37\1\2\u01f9\u01fb\7\32\2\2\u01fa\u01fc\5,\27\2\u01fb"+
-		"\u01fa\3\2\2\2\u01fb\u01fc\3\2\2\2\u01fc\u01fd\3\2\2\2\u01fd\u01ff\5B"+
-		"\"\2\u01fe\u01f8\3\2\2\2\u01fe\u01ff\3\2\2\2\u01ff\u0200\3\2\2\2\u0200"+
-		"\u0202\7\23\2\2\u0201\u0203\5,\27\2\u0202\u0201\3\2\2\2\u0202\u0203\3"+
-		"\2\2\2\u0203\u0204\3\2\2\2\u0204\u0205\b\37\1\2\u0205\u0207\3\2\2\2\u0206"+
-		"\u01e7\3\2\2\2\u0206\u01f3\3\2\2\2\u0207=\3\2\2\2\u0208\u0209\7\3\2\2"+
-		"\u0209\u020a\7\62\2\2\u020a\u020b\5\30\r\2\u020b\u020c\7\4\2\2\u020c?"+
-		"\3\2\2\2\u020d\u020f\b!\1\2\u020e\u0210\5> \2\u020f\u020e\3\2\2\2\u020f"+
-		"\u0210\3\2\2\2\u0210\u0211\3\2\2\2\u0211\u0212\5B\"\2\u0212\u0213\b!\1"+
-		"\2\u0213A\3\2\2\2\u0214\u0215\5.\30\2\u0215\u0216\b\"\1\2\u0216\u0218"+
-		"\3\2\2\2\u0217\u0214\3\2\2\2\u0218\u021b\3\2\2\2\u0219\u0217\3\2\2\2\u0219"+
-		"\u021a\3\2\2\2\u021a\u021d\3\2\2\2\u021b\u0219\3\2\2\2\u021c\u021e\5\62"+
-		"\32\2\u021d\u021c\3\2\2\2\u021d\u021e\3\2\2\2\u021e\u021f\3\2\2\2\u021f"+
-		"\u0220\b\"\1\2\u0220\u0221\b\"\1\2\u0221C\3\2\2\2\u0222\u0223\b#\1\2\u0223"+
+		"\63\3\2\2\2\u01a1\u01a2\7\3\2\2\u01a2\u01a6\7\61\2\2\u01a3\u01a5\5\30"+
+		"\r\2\u01a4\u01a3\3\2\2\2\u01a5\u01a8\3\2\2\2\u01a6\u01a4\3\2\2\2\u01a6"+
+		"\u01a7\3\2\2\2\u01a7\u01a9\3\2\2\2\u01a8\u01a6\3\2\2\2\u01a9\u01ab\7\4"+
+		"\2\2\u01aa\u01a1\3\2\2\2\u01ab\u01ae\3\2\2\2\u01ac\u01aa\3\2\2\2\u01ac"+
+		"\u01ad\3\2\2\2\u01ad\u01ba\3\2\2\2\u01ae\u01ac\3\2\2\2\u01af\u01b0\7\3"+
+		"\2\2\u01b0\u01b4\7\62\2\2\u01b1\u01b3\5\30\r\2\u01b2\u01b1\3\2\2\2\u01b3"+
+		"\u01b6\3\2\2\2\u01b4\u01b2\3\2\2\2\u01b4\u01b5\3\2\2\2\u01b5\u01b7\3\2"+
+		"\2\2\u01b6\u01b4\3\2\2\2\u01b7\u01b9\7\4\2\2\u01b8\u01af\3\2\2\2\u01b9"+
+		"\u01bc\3\2\2\2\u01ba\u01b8\3\2\2\2\u01ba\u01bb\3\2\2\2\u01bb\65\3\2\2"+
+		"\2\u01bc\u01ba\3\2\2\2\u01bd\u01bf\7\35\2\2\u01be\u01c0\5&\24\2\u01bf"+
+		"\u01be\3\2\2\2\u01bf\u01c0\3\2\2\2\u01c0\u01c1\3\2\2\2\u01c1\u01c2\58"+
+		"\35\2\u01c2\u01c3\b\34\1\2\u01c3\67\3\2\2\2\u01c4\u01d2\b\35\1\2\u01c5"+
+		"\u01c6\7\3\2\2\u01c6\u01cc\7\61\2\2\u01c7\u01c8\5\30\r\2\u01c8\u01c9\b"+
+		"\35\1\2\u01c9\u01cb\3\2\2\2\u01ca\u01c7\3\2\2\2\u01cb\u01ce\3\2\2\2\u01cc"+
+		"\u01ca\3\2\2\2\u01cc\u01cd\3\2\2\2\u01cd\u01cf\3\2\2\2\u01ce\u01cc\3\2"+
+		"\2\2\u01cf\u01d1\7\4\2\2\u01d0\u01c5\3\2\2\2\u01d1\u01d4\3\2\2\2\u01d2"+
+		"\u01d0\3\2\2\2\u01d2\u01d3\3\2\2\2\u01d3\u01d5\3\2\2\2\u01d4\u01d2\3\2"+
+		"\2\2\u01d5\u01d6\5:\36\2\u01d6\u01d7\b\35\1\2\u01d79\3\2\2\2\u01d8\u01e6"+
+		"\b\36\1\2\u01d9\u01da\7\3\2\2\u01da\u01e0\7\62\2\2\u01db\u01dc\5\30\r"+
+		"\2\u01dc\u01dd\b\36\1\2\u01dd\u01df\3\2\2\2\u01de\u01db\3\2\2\2\u01df"+
+		"\u01e2\3\2\2\2\u01e0\u01de\3\2\2\2\u01e0\u01e1\3\2\2\2\u01e1\u01e3\3\2"+
+		"\2\2\u01e2\u01e0\3\2\2\2\u01e3\u01e5\7\4\2\2\u01e4\u01d9\3\2\2\2\u01e5"+
+		"\u01e8\3\2\2\2\u01e6\u01e4\3\2\2\2\u01e6\u01e7\3\2\2\2\u01e7\u01e9\3\2"+
+		"\2\2\u01e8\u01e6\3\2\2\2\u01e9\u01ea\b\36\1\2\u01ea;\3\2\2\2\u01eb\u01ed"+
+		"\t\5\2\2\u01ec\u01ee\5,\27\2\u01ed\u01ec\3\2\2\2\u01ed\u01ee\3\2\2\2\u01ee"+
+		"\u01ef\3\2\2\2\u01ef\u01f0\b\37\1\2\u01f0\u01f1\5@!\2\u01f1\u01f3\7\23"+
+		"\2\2\u01f2\u01f4\5,\27\2\u01f3\u01f2\3\2\2\2\u01f3\u01f4\3\2\2\2\u01f4"+
+		"\u01f5\3\2\2\2\u01f5\u01f6\b\37\1\2\u01f6\u020b\3\2\2\2\u01f7\u01f9\7"+
+		"\30\2\2\u01f8\u01fa\5,\27\2\u01f9\u01f8\3\2\2\2\u01f9\u01fa\3\2\2\2\u01fa"+
+		"\u01fb\3\2\2\2\u01fb\u0202\5@!\2\u01fc\u01fd\b\37\1\2\u01fd\u01ff\7\32"+
+		"\2\2\u01fe\u0200\5,\27\2\u01ff\u01fe\3\2\2\2\u01ff\u0200\3\2\2\2\u0200"+
+		"\u0201\3\2\2\2\u0201\u0203\5B\"\2\u0202\u01fc\3\2\2\2\u0202\u0203\3\2"+
+		"\2\2\u0203\u0204\3\2\2\2\u0204\u0206\7\23\2\2\u0205\u0207\5,\27\2\u0206"+
+		"\u0205\3\2\2\2\u0206\u0207\3\2\2\2\u0207\u0208\3\2\2\2\u0208\u0209\b\37"+
+		"\1\2\u0209\u020b\3\2\2\2\u020a\u01eb\3\2\2\2\u020a\u01f7\3\2\2\2\u020b"+
+		"=\3\2\2\2\u020c\u020d\7\3\2\2\u020d\u020e\7\62\2\2\u020e\u020f\5\30\r"+
+		"\2\u020f\u0210\7\4\2\2\u0210?\3\2\2\2\u0211\u0213\b!\1\2\u0212\u0214\5"+
+		"> \2\u0213\u0212\3\2\2\2\u0213\u0214\3\2\2\2\u0214\u0215\3\2\2\2\u0215"+
+		"\u0216\5B\"\2\u0216\u0217\b!\1\2\u0217A\3\2\2\2\u0218\u0219\5.\30\2\u0219"+
+		"\u021a\b\"\1\2\u021a\u021c\3\2\2\2\u021b\u0218\3\2\2\2\u021c\u021f\3\2"+
+		"\2\2\u021d\u021b\3\2\2\2\u021d\u021e\3\2\2\2\u021e\u0220\3\2\2\2\u021f"+
+		"\u021d\3\2\2\2\u0220\u0221\b\"\1\2\u0221C\3\2\2\2\u0222\u0223\b#\1\2\u0223"+
 		"\u0224\5B\"\2\u0224\u0225\b#\1\2\u0225E\3\2\2\2\u0226\u0227\b$\1\2\u0227"+
 		"\u0228\7\3\2\2\u0228\u022a\7/\2\2\u0229\u022b\5,\27\2\u022a\u0229\3\2"+
 		"\2\2\u022a\u022b\3\2\2\2\u022b\u022c\3\2\2\2\u022c\u022d\b$\1\2\u022d"+
@@ -5932,16 +5968,15 @@ public class WasmLanguageParser extends Parser {
 		"\3\u0443\u044c\3\2\2\2\u0444\u0446\5x=\2\u0445\u0444\3\2\2\2\u0446\u0449"+
 		"\3\2\2\2\u0447\u0445\3\2\2\2\u0447\u0448\3\2\2\2\u0448\u044a\3\2\2\2\u0449"+
 		"\u0447\3\2\2\2\u044a\u044c\7\2\2\3\u044b\u0441\3\2\2\2\u044b\u0447\3\2"+
-		"\2\2\u044c\u008d\3\2\2\2k\u0096\u009a\u00a1\u00a3\u00a8\u00ad\u00b5\u00bc"+
+		"\2\2\u044c\u008d\3\2\2\2j\u0096\u009a\u00a1\u00a3\u00a8\u00ad\u00b5\u00bc"+
 		"\u00c9\u00d4\u00d6\u00e3\u00e9\u00ff\u0113\u011b\u0120\u0127\u012e\u0147"+
-		"\u015b\u0179\u017c\u0181\u0184\u0199\u019d\u01a7\u01ad\u01b5\u01bb\u01c0"+
-		"\u01ca\u01d0\u01db\u01e1\u01e9\u01ef\u01f5\u01fb\u01fe\u0202\u0206\u020f"+
-		"\u0219\u021d\u022a\u0232\u0239\u0242\u0249\u0253\u025d\u0263\u026d\u0278"+
-		"\u027a\u0285\u0290\u029c\u029e\u02ad\u02b6\u02bf\u02d4\u02d9\u02de\u02e4"+
-		"\u02ec\u0300\u0304\u0309\u0319\u031e\u0326\u032e\u0336\u033e\u0343\u0366"+
-		"\u0379\u038e\u0393\u0398\u03a1\u03a7\u03ab\u03b0\u03b9\u03be\u03f4\u03fd"+
-		"\u0402\u0407\u040c\u0413\u041a\u0421\u0424\u042e\u0434\u043b\u043f\u0447"+
-		"\u044b";
+		"\u015b\u0179\u017c\u0181\u0184\u0199\u019d\u01a6\u01ac\u01b4\u01ba\u01bf"+
+		"\u01cc\u01d2\u01e0\u01e6\u01ed\u01f3\u01f9\u01ff\u0202\u0206\u020a\u0213"+
+		"\u021d\u022a\u0232\u0239\u0242\u0249\u0253\u025d\u0263\u026d\u0278\u027a"+
+		"\u0285\u0290\u029c\u029e\u02ad\u02b6\u02bf\u02d4\u02d9\u02de\u02e4\u02ec"+
+		"\u0300\u0304\u0309\u0319\u031e\u0326\u032e\u0336\u033e\u0343\u0366\u0379"+
+		"\u038e\u0393\u0398\u03a1\u03a7\u03ab\u03b0\u03b9\u03be\u03f4\u03fd\u0402"+
+		"\u0407\u040c\u0413\u041a\u0421\u0424\u042e\u0434\u043b\u043f\u0447\u044b";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

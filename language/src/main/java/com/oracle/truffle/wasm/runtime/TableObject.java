@@ -19,8 +19,7 @@ public final class TableObject implements TruffleObject {
     private int min;
     private int max = -1;
 
-    private int[] table; // FIXME use ArrayList if non-primitive type needed
-    //private ArrayList<> table; // FIXME hold fxn ptrs ?????? how to store? hold fxn signatures? "opaque values" == signature object?
+    private int[] table;
 
     protected TableObject(int min, int max) {
         this.min = min;

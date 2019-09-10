@@ -68,6 +68,11 @@ public abstract class WasmReadLocalVariableNode extends WasmExpressionNode {
      */
     protected abstract FrameSlot getSlot();
 
+    @Specialization(guards = "isInt(frame)")
+    protected int readInt(VirtualFrame frame) {
+        return FrameUtil.getIntSafe(frame, getSlot());
+    }
+
     @Specialization(guards = "isLong(frame)")
     protected long readLong(VirtualFrame frame) { // TODO what about other types??
         /*
@@ -76,6 +81,16 @@ public abstract class WasmReadLocalVariableNode extends WasmExpressionNode {
          * a primitive long value.
          */
         return FrameUtil.getLongSafe(frame, getSlot());
+    }
+
+    @Specialization(guards = "isFloat(frame)")
+    protected float readFloat(VirtualFrame frame) {
+        return FrameUtil.getFloatSafe(frame, getSlot());
+    }
+
+    @Specialization(guards = "isDouble(frame)")
+    protected double readDouble(VirtualFrame frame) {
+        return FrameUtil.getDoubleSafe(frame, getSlot());
     }
 
     @Specialization(guards = "isBoolean(frame)")
@@ -112,6 +127,18 @@ public abstract class WasmReadLocalVariableNode extends WasmExpressionNode {
      */
     protected boolean isLong(VirtualFrame frame) {
         return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long;
+    }
+
+    protected boolean isInt(VirtualFrame frame) {
+        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Int;
+    }
+
+    protected boolean isFloat(VirtualFrame frame) {
+        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Float;
+    }
+
+    protected boolean isDouble(VirtualFrame frame) {
+        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Double;
     }
 
     protected boolean isBoolean(VirtualFrame frame) {
