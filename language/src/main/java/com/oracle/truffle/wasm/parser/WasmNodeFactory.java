@@ -120,11 +120,11 @@ public class WasmNodeFactory {
     private final Source source;
     private final Map<Integer, RootCallTarget> allFunctions;
     // map names to indices: functions
-    private final Map<String, Integer> funcIndices;
+    private final Map<String, Integer>  funcIndices;
     // map names to indices: types
     private final Map<String, Integer> typeIndices;
     // map functions to their signatures
-    private final Map<Integer, WasmFunctionSignatureNode> signatureMap;
+    private final Map<Integer, WasmFunctionSignatureNode> funcMap;
     // map types to their signatures
     private final Map<Integer, WasmFunctionSignatureNode> typeMap;
     private boolean memoryRegistered = false;
@@ -152,7 +152,7 @@ public class WasmNodeFactory {
         this.allFunctions = new HashMap<>();
         this.funcIndices = new HashMap<>();
         this.typeIndices = new HashMap<>();
-        this.signatureMap = new HashMap<>();
+        this.funcMap = new HashMap<>();
         this.typeMap = new HashMap<>();
     }
 
@@ -272,46 +272,6 @@ public class WasmNodeFactory {
     }
 
     /**
-     * Adds explicitly declared type signature to the type map
-     *
-     * @param nameToken
-     * @param typeIndex
-     * @param paramsArray
-     * @param resultsArray
-     */
-    public WasmFunctionSignatureNode createType(Token nameToken, int typeIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray) {
-        final WasmFunctionSignatureNode typeSignatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
-
-        if (nameToken != null) {
-            srcFromToken(typeSignatureNode, nameToken);
-            typeIndices.put(nameToken.getText(), typeIndex);
-        }
-
-        typeMap.put(typeIndex, typeSignatureNode);
-        return typeSignatureNode;
-    }
-
-    /**
-     * Adds implicitly declared type signature (from parsing a function) to the type map
-     *
-     * @param node
-     * @param typeIndex
-     */
-    public void registerType(WasmFunctionSignatureNode node, int typeIndex) {
-        typeMap.put(typeIndex, node);
-    }
-
-    /**
-     * Gets signature of respective type for type checking during a call_indirect
-     *
-     * @param typeIndex
-     * @return
-     */
-    public WasmFunctionSignatureNode getType(int typeIndex) {
-        return typeMap.get(typeIndex);
-    }
-
-    /**
      * Gets type of signature for type checking during a call_indirect
      *
      * @param signatureNode
@@ -331,28 +291,44 @@ public class WasmNodeFactory {
     }
 
     /**
-     * Adds implicitly declared type signature (from parsing a function) to the function type map, so number of
-     * required arguments is known in advance.
+     * Adds implicitly or explicitly declared signature (from parsing a function or a type) to the global map(s).
      *
      * @param nameToken
+     * @param typeIndex
      * @param funcIndex
      * @param paramsArray
      * @param resultsArray
      */
-    public WasmFunctionSignatureNode createSignature(Token nameToken, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray, boolean register) {
-        final WasmFunctionSignatureNode funcSignatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
+    public WasmFunctionSignatureNode createSignature(Token nameToken, int typeIndex, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray, boolean register) {
+        // Not condensing types b/c will rely on some pre-processing
+        
+        final WasmFunctionSignatureNode signatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
+        // Processing a function
+        boolean both = register && (typeIndex >= 0) && (funcIndex >= 0);
+        // Processing a type (only)
+        boolean type = register && (typeIndex >= 0) && (funcIndex < 0);
 
-        if (nameToken != null && register) {
-            srcFromToken(funcSignatureNode, nameToken);
+        if (nameToken != null && both) {
+            srcFromToken(signatureNode, nameToken);
             funcIndices.put(nameToken.getText(), funcIndex);
+            typeIndices.put(nameToken.getText(), typeIndex);
+        } else if (nameToken != null && type) {
+            srcFromToken(signatureNode, nameToken);
+            typeIndices.put(nameToken.getText(), typeIndex);
         }
 
-        if (register) signatureMap.put(funcIndex, funcSignatureNode);
-        return funcSignatureNode;
+        if (both) {
+            funcMap.put(funcIndex, signatureNode);
+            typeMap.put(typeIndex, signatureNode);
+        } else if (type) {
+            typeMap.put(typeIndex, signatureNode);
+        }
+
+        return signatureNode;
     }
 
-    public WasmFunctionSignatureNode getSignature(Integer funcIndex) {
-        return signatureMap.get(funcIndex);
+    public WasmFunctionSignatureNode getFuncSignature(Integer funcIndex) {
+        return funcMap.get(funcIndex);
     }
 
     public String getTypeString(WasmExpressionNode node) {
@@ -824,7 +800,7 @@ public class WasmNodeFactory {
         }
 
         WasmFunctionSignatureNode expSig = typeMap.get(typeIndex);
-        WasmFunctionSignatureNode actSig = signatureMap.get(funcIndex);
+        WasmFunctionSignatureNode actSig = funcMap.get(funcIndex);
 
         if (!expSig.equals(actSig)) {
             throw new RuntimeException("call_indirect: expected and actual signatures do not match");
@@ -1005,6 +981,11 @@ public class WasmNodeFactory {
         return result;
     }
 
+    /**
+     * Helper fxn for Call_Indirect to resolve the type index, if used.
+     * @param index
+     * @return
+     */
     public WasmExpressionNode createIndexLiteral(Integer index) {
         return new WasmIndexLiteralNode(Integer.valueOf(index));
     }

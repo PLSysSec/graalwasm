@@ -114,7 +114,8 @@ public static Map<Integer, RootCallTarget> parseWasm(WasmLanguage language, Sour
     parser.factory = new WasmNodeFactory(language, source);
     parser.source = source;
     numFunc = 0;
-    parser.wasmfuncpass();
+    numType = 0;
+    parser.wasmtypepass();
     parser.reset();
     numFunc = 0;
     numType = 0;
@@ -163,18 +164,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 
-wasmfuncpass
-  : moduleFP
+wasmtypepass
+  : moduleTP
   ;
 
-moduleFP
-  : module_FP EOF
-  | module_fieldFP* EOF
+moduleTP
+  : module_TP EOF
+  | module_fieldTP* EOF
   ;
 
-module_fieldFP
-  : funcFP
-  | type_def
+module_fieldTP
+  : funcTP
+  | type_defTP
   //| table // funcref
   //| elem
   //| data
@@ -184,39 +185,39 @@ module_fieldFP
   | .+?
   ;
 
-module_FP
-  : LPAR MODULE VAR? module_fieldFP* RPAR
+module_TP
+  : LPAR MODULE VAR? module_fieldTP* RPAR
   ;
 
-funcFP
+funcTP
   : LPAR FUNC bind_var?
-    func_fieldsFP                               { factory.createSignature($bind_var.start, numFunc++, $func_fieldsFP.parArr, $func_fieldsFP.resArr, true); }
+    func_fieldsTP                               { factory.createSignature($bind_var.start, numType++, numFunc++, $func_fieldsTP.parArr, $func_fieldsTP.resArr, true); }
     RPAR
   ;
 
-func_fieldsFP returns [ArrayList<String> parArr, ArrayList<String> resArr]
-  : type_use? func_fields_bodyFP                { $parArr = $func_fields_bodyFP.parArr;
-                                                  $resArr = $func_fields_bodyFP.resArr; } // TODO handle type_use
-  //| inline_import type_use? func_fields_importFP
-  //| inline_export func_fieldsFP
+func_fieldsTP returns [ArrayList<String> parArr, ArrayList<String> resArr]
+  : type_use? func_fields_bodyTP                { $parArr = $func_fields_bodyTP.parArr;
+                                                  $resArr = $func_fields_bodyTP.resArr; } // TODO handle type_use
+  //| inline_import type_use? func_fields_importFTP
+  //| inline_export func_fieldsTP
   ;
 
-/*func_fields_importFP returns [WasmStatementNode result]
+/*func_fields_importTP returns [WasmStatementNode result]
   : (
-    LPAR PARAM value_typeFP* RPAR
+    LPAR PARAM value_typeTP* RPAR
     |
-    LPAR PARAM bind_var value_typeFP RPAR
+    LPAR PARAM bind_var value_typeTP RPAR
     )
-    func_fields_import_resultFP
+    func_fields_import_resultTP
   ;*/
 
-/*func_fields_import_resultFP returns [WasmStatementNode result]
+/*func_fields_import_resultTP returns [WasmStatementNode result]
   : (
-    LPAR RESULT value_typeFP* RPAR
+    LPAR RESULT value_typeTP* RPAR
     )*
   ;*/
 
-func_fields_bodyFP returns [ArrayList<String> parArr, ArrayList<String> resArr]
+func_fields_bodyTP returns [ArrayList<String> parArr, ArrayList<String> resArr]
   :                                             { ArrayList<String> parArr = new ArrayList<String>(); }
     (
     LPAR PARAM
@@ -227,15 +228,20 @@ func_fields_bodyFP returns [ArrayList<String> parArr, ArrayList<String> resArr]
     |
     LPAR PARAM VAR value_type RPAR              { parArr.add($value_type.start.getText()); }
     )*
-    func_result_bodyFP                          { $parArr = parArr;
-                                                  $resArr = $func_result_bodyFP.resArr; }
+    func_result_bodyTP                          { $parArr = parArr;
+                                                  $resArr = $func_result_bodyTP.resArr; }
   ;
 
-func_result_bodyFP returns [ArrayList<String> resArr]
+func_result_bodyTP returns [ArrayList<String> resArr]
   :                                             { ArrayList<String> resArr = new ArrayList<String>(); }
     (LPAR RESULT value_type                     { resArr.add($value_type.start.getText()); }
      RPAR)?                                     { $resArr = resArr; }
      .*?
+  ;
+
+type_defTP returns [WasmStatementNode result]
+  : LPAR TYPE bind_var? type_ RPAR              { // Pass -1 in place of funcIndex b/c do not want to register this signature as a function
+                                                  factory.createSignature($bind_var.start, numType++, -1, $type_.parArr, $type_.resArr, true); }
   ;
 
 
@@ -299,8 +305,7 @@ memory_type returns [Integer min, Integer max]
                                               else { $max = -1; }}
   ;
 
-type_use returns [WasmExpressionNode index] // FIXME factory.createIndexLiteral($var.start, false) ? (may not be index though...)
-// FIXME NEW FACTORY METHOD JUST FOR THIS
+type_use returns [WasmExpressionNode index]
   : LPAR TYPE var RPAR                      { $index = null; // necessary?
                                               String id = $var.start.getText();
                                               Integer index;
@@ -355,7 +360,7 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
                                                             index = false;
                                                           }
 
-                                                          WasmFunctionSignatureNode sig = factory.getSignature(funcIndex);
+                                                          WasmFunctionSignatureNode sig = factory.getFuncSignature(funcIndex);
                                                           int numArgs = sig.getNumParams();
                                                           List<WasmExpressionNode> params = new ArrayList<>();
                                                           // build this list in case of error
@@ -433,14 +438,14 @@ call_instr_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode resu
                                                             typeIndex = $type_use.index;
                                                             // FIXME shouldn't be more params/results if (type ...) is used
                                                           } else {
-                                                            WasmFunctionSignatureNode sig = factory.createSignature(null, -1, $call_instr_params_instr.parArr, $call_instr_params_instr.resArr, false);
+                                                            WasmFunctionSignatureNode sig = factory.createSignature(null, -1, -1, $call_instr_params_instr.parArr, $call_instr_params_instr.resArr, false);
                                                             typeIndex = factory.getTypeFromSig(sig);
                                                           }
 
                                                           WasmExpressionNode tableIndex = (WasmExpressionNode) body.pop();
                                                           int funcIndex = factory.getFuncIndex(typeIndex, tableIndex);
 
-                                                          WasmFunctionSignatureNode sig = factory.getSignature(funcIndex);
+                                                          WasmFunctionSignatureNode sig = factory.getFuncSignature(funcIndex);
                                                           int numArgs = sig.getNumParams();
                                                           List<WasmExpressionNode> params = new ArrayList<>();
                                                           // build this list in case of error
@@ -565,8 +570,8 @@ const_expr returns [WasmStatementNode result] // FIXME test
 /* Functions */
 
 func
-  :                                             { WasmFunctionSignatureNode sig = factory.getSignature(numFunc++);
-                                                  factory.registerType(sig, numType++); }
+  :                                             { WasmFunctionSignatureNode sig = factory.getFuncSignature(numFunc++); }
+                                                  //factory.registerType(sig, numType++); }
     LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); }
     func_fields                                 { factory.finishFunction($func_fields.result); } // TODO do result check here
     RPAR
@@ -723,7 +728,7 @@ type_ returns [ArrayList<String> parArr, ArrayList<String> resArr]
   ;
 
 type_def returns [WasmStatementNode result]
-  : LPAR TYPE bind_var? type_ RPAR              { factory.createType($bind_var.start, numType++, $type_.parArr, $type_.resArr); }
+  : LPAR TYPE bind_var? type_ RPAR
   ;
 
 start
