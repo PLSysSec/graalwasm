@@ -43,11 +43,13 @@ package com.oracle.truffle.wasm.nodes.controlflow;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 import com.oracle.truffle.wasm.nodes.WasmStatementNode;
 
 /**
@@ -62,9 +64,19 @@ public final class WasmBlockNode extends WasmStatementNode {
      * requirement that the field is {@code final} and an array of nodes.
      */
     @Children private final WasmStatementNode[] bodyNodes;
+    private ArrayList<Object> results;
 
     public WasmBlockNode(WasmStatementNode[] bodyNodes) {
         this.bodyNodes = bodyNodes;
+        this.results = new ArrayList<>();
+    }
+
+    public void addResult(Object resultValue) {
+        results.add(resultValue);
+    }
+
+    public ArrayList<Object> getResultList() {
+        return results;
     }
 
     /**
@@ -81,7 +93,11 @@ public final class WasmBlockNode extends WasmStatementNode {
         CompilerAsserts.compilationConstant(bodyNodes.length);
 
         for (WasmStatementNode statement : bodyNodes) {
-            statement.executeVoid(frame);
+            if (statement instanceof WasmExpressionNode && ((WasmExpressionNode) statement).hasReturnTag()) { // FIXME matters if Statement or Expression????
+                addResult(((WasmExpressionNode) statement).executeGeneric(frame));
+            } else {
+                statement.executeVoid(frame);
+            }
         }
     }
 

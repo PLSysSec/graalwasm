@@ -60,6 +60,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 public abstract class WasmExpressionNode extends WasmStatementNode {
 
     private boolean hasExpressionTag;
+    private boolean hasReturnTag;
 
     /**
      * The execute method when no specialization is possible. This is the most general case,
@@ -94,6 +95,15 @@ public abstract class WasmExpressionNode extends WasmStatementNode {
      */
     public final void addExpressionTag() {
         hasExpressionTag = true;
+    }
+
+    /**
+     * Marks this node as being a {ReturnTag} for stack-based return values.
+     */
+    public final void addReturnTag() { hasReturnTag = true; }
+
+    public final boolean hasReturnTag() {
+        return hasReturnTag;
     }
 
     /*

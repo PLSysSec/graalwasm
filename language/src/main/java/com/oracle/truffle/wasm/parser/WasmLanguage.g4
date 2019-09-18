@@ -390,7 +390,7 @@ plain_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode result]
                                                             SemErr($var.start, msg);
                                                           }
 
-                                                          if (index) {
+                                                          if (index) { // TODO get result(s) + typecheck
                                                             $result = factory.createCall(factory.createRead(factory.createIndexLiteral($var.start, false), true), params, $var.start);
                                                           } else {
                                                             $result = factory.createCall(factory.createRead(factory.createStringLiteral($var.start, false), true), params, $var.start);
@@ -475,6 +475,7 @@ call_instr_instr [Stack<WasmStatementNode> body] returns [WasmStatementNode resu
                                                             SemErr($CALL_INDIRECT, msg);
                                                           }
 
+                                                          // TODO get result(s) + typecheck
                                                           $result = factory.createCallIndirect(funcIndex, params);
                                                         }
   ;
@@ -612,11 +613,11 @@ func_fields_body returns [WasmStatementNode result]
   ;
 
 func_result_body returns [WasmStatementNode result]
-  : (LPAR RESULT value_type RPAR)?
+  : (LPAR RESULT value_type RPAR)?              // TODO make sure result is of right type/arity
     func_body                                   { $result = $func_body.result; }
   ;
 
-func_body returns [WasmStatementNode result]
+func_body returns [WasmStatementNode result] // FIXME WasmFunctionBodyNode ???
   :                                             { factory.startBlock();
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
     (

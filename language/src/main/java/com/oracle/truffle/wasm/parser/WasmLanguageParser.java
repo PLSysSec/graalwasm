@@ -1757,7 +1757,7 @@ public class WasmLanguageParser extends Parser {
 				                                                            SemErr((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), msg);
 				                                                          }
 
-				                                                          if (index) {
+				                                                          if (index) { // TODO get result(s) + typecheck
 				                                                            ((Plain_instrContext)_localctx).result =  factory.createCall(factory.createRead(factory.createIndexLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), true), params, (((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null));
 				                                                          } else {
 				                                                            ((Plain_instrContext)_localctx).result =  factory.createCall(factory.createRead(factory.createStringLiteral((((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null), false), true), params, (((Plain_instrContext)_localctx).var!=null?(((Plain_instrContext)_localctx).var.start):null));
@@ -2215,6 +2215,7 @@ public class WasmLanguageParser extends Parser {
 			                                                            SemErr(((Call_instr_instrContext)_localctx).CALL_INDIRECT, msg);
 			                                                          }
 
+			                                                          // TODO get result(s) + typecheck
 			                                                          ((Call_instr_instrContext)_localctx).result =  factory.createCallIndirect(funcIndex, params);
 			                                                        
 			}

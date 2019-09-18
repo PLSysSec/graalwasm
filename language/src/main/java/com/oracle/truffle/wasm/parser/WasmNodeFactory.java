@@ -169,13 +169,14 @@ public class WasmNodeFactory {
     public void startFunction(Token nameToken, Token bodyStartToken) {
         assert functionStartPos == 0;
         assert functionName == null;
+        assert functionIndex == null;
         assert functionBodyStartPos == 0;
         assert parameterCount == 0;
         assert localCount == 0;
         assert frameDescriptor == null;
         assert lexicalScope == null;
 
-        functionIndex = new Integer(functionCount++); // FIXME functionIndex var not reset to 0.... important?
+        functionIndex = new Integer(functionCount++);
         if (nameToken != null) {
             functionStartPos = nameToken.getStartIndex();
             functionName = nameToken.getText();
@@ -215,6 +216,7 @@ public class WasmNodeFactory {
             methodNodes.add(bodyNode);
             final int bodyEndPos = bodyNode.getSourceEndIndex();
             final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
+            // TODO methodBlock -> can get list of statements?
             final WasmStatementNode methodBlock = finishBlock(methodNodes, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
             assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
@@ -227,6 +229,7 @@ public class WasmNodeFactory {
 
         functionStartPos = 0;
         functionName = null;
+        functionIndex = null;
         functionBodyStartPos = 0;
         parameterCount = 0;
         localCount = 0;
@@ -244,6 +247,10 @@ public class WasmNodeFactory {
         if (containsNull(bodyNodes)) {
             return null;
         }
+
+        // Track number of result values left on stack
+        int resCount = 0;
+        WasmFunctionSignatureNode sig = getFuncSignature(functionIndex);
 
         List<WasmStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
         flattenBlocks(bodyNodes, flattenedNodes);
@@ -301,7 +308,7 @@ public class WasmNodeFactory {
      */
     public WasmFunctionSignatureNode createSignature(Token nameToken, int typeIndex, int funcIndex, ArrayList<String> paramsArray, ArrayList<String> resultsArray, boolean register) {
         // Not condensing types b/c will rely on some pre-processing
-        
+
         final WasmFunctionSignatureNode signatureNode = new WasmFunctionSignatureNode(paramsArray, resultsArray);
         // Processing a function
         boolean both = register && (typeIndex >= 0) && (funcIndex >= 0);
@@ -398,7 +405,7 @@ public class WasmNodeFactory {
         return returnNode;
     }
 
-    public WasmExpressionNode createPrint(Token t, WasmExpressionNode valueNode) {
+    public WasmExpressionNode createPrint(Token t, WasmExpressionNode valueNode) { // TODO expected to consume stack val or not??
         final WasmExpressionNode valueUnboxed = WasmUnboxNodeGen.create(valueNode);
         final WasmExpressionNode[] arr = {valueUnboxed};
         final WasmExpressionNode printNode = WasmPrintlnBuiltinFactory.create(arr);
@@ -451,6 +458,7 @@ public class WasmNodeFactory {
     public WasmStatementNode createSelect(Token s) {
         final WasmSelectNode selectNode = new WasmSelectNode();
         srcFromToken(selectNode, s);
+        selectNode.addReturnTag();
         return selectNode;
     }
 
@@ -473,6 +481,7 @@ public class WasmNodeFactory {
         int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
+        result.addReturnTag();
 
         return result;
     }
@@ -536,6 +545,7 @@ public class WasmNodeFactory {
         int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
+        result.addReturnTag();
 
         return result;
     }
@@ -586,6 +596,7 @@ public class WasmNodeFactory {
         int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
+        result.addReturnTag();
 
         return result;
     }
@@ -674,6 +685,7 @@ public class WasmNodeFactory {
         int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
+        result.addReturnTag();
 
         return result;
     }
@@ -753,6 +765,7 @@ public class WasmNodeFactory {
         int length = opToken.getStopIndex() - start;
         result.setSourceSection(start, length);
         result.addExpressionTag();
+        result.addReturnTag();
 
         return result;
     }
@@ -778,6 +791,7 @@ public class WasmNodeFactory {
             result.setSourceSection(startPos, endPos - startPos);
             result.addExpressionTag();
         }
+        result.addReturnTag(); // RESULT
 
         return result;
     }
@@ -932,6 +946,7 @@ public class WasmNodeFactory {
             result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         }
         result.addExpressionTag();
+        result.addReturnTag(); // RESULT
         return result;
     }
 
@@ -957,6 +972,7 @@ public class WasmNodeFactory {
         final WasmExpressionNode set = createAssignment(nameNode, valueNode);
         final WasmExpressionNode get = createRead(nameNode, false);
         final WasmExpressionNode result = new WasmTeeLocalVariableNode(set, get);
+        result.addReturnTag();
         return result;
     }
 
@@ -978,6 +994,7 @@ public class WasmNodeFactory {
             }
         }
         result.addExpressionTag();
+        // if involved in a result to be returned, only used in its construction (not a return value in and of itself)
         return result;
     }
 
@@ -1001,6 +1018,7 @@ public class WasmNodeFactory {
         final WasmStringLiteralNode result = new WasmStringLiteralNode(literal.intern());
         srcFromToken(result, literalToken);
         result.addExpressionTag();
+        // if involved in a result to be returned, only used in its construction (not a return value in and of itself)
         return result;
     }
 
@@ -1043,6 +1061,7 @@ public class WasmNodeFactory {
             srcFromToken(result, literalToken);
         }
         result.addExpressionTag();
+        result.addReturnTag();
         return result;
     }
 
@@ -1075,6 +1094,7 @@ public class WasmNodeFactory {
         final int endPos = nameNode.getSourceEndIndex();
         result.setSourceSection(startPos, endPos - startPos);
         result.addExpressionTag();
+        result.addReturnTag();
 
         return result;
     }
@@ -1179,6 +1199,7 @@ public class WasmNodeFactory {
         }
 
         final WasmExpressionNode result = new WasmLoadNode(language, o, a, index);
+        result.addReturnTag();
         return result;
     }
 

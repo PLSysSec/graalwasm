@@ -231,7 +231,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             sb.append(";}");
             String language = requestedSource.getLanguage() == null ? ID : requestedSource.getLanguage();
             Source decoratedSource = Source.newBuilder(language, sb.toString(), request.getSource().getName()).build();
-            functions = WasmLanguageParser.parseWasm(this, decoratedSource);
+            functions = WasmLanguageParser.parseWasm(this, decoratedSource); // TODO create string -> integer mapping so can get "$main" later
         }
 
         RootCallTarget main = functions.get(0); //"$main");

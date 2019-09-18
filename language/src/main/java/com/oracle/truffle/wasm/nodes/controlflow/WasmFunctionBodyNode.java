@@ -43,10 +43,15 @@ package com.oracle.truffle.wasm.nodes.controlflow;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.wasm.WasmLanguage;
+import com.oracle.truffle.wasm.nodes.WasmFunctionSignatureNode;
+import com.oracle.truffle.wasm.nodes.controlflow.WasmBlockNode;
 import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 import com.oracle.truffle.wasm.nodes.WasmRootNode;
 import com.oracle.truffle.wasm.nodes.WasmStatementNode;
 import com.oracle.truffle.wasm.runtime.WasmNull;
+
+import java.util.ArrayList;
 
 /**
  * The body of a user-defined Wasm function. This is the node referenced by a {@link WasmRootNode} for
@@ -90,12 +95,21 @@ public final class WasmFunctionBodyNode extends WasmExpressionNode {
             return ex.getResult();
         }
 
+        ArrayList<Object> results = ((WasmBlockNode) bodyNode).getResultList();
+
         /*
          * In the interpreter, record profiling information that the function ends without an
          * explicit return.
          */
-        nullTaken.enter();
-        /* Return the default null value. */
-        return WasmNull.SINGLETON;
+        if (results.isEmpty()) {
+            nullTaken.enter();
+            /* Return the default null value. */
+            return WasmNull.SINGLETON;
+        } else {
+            /* Return the last result from stack */
+            //Integer index = ((WasmRootNode) this.getParent()).getIndex();
+            //WasmLanguage.getCurrentContext().getFunctionRegistry().lookup(null, index, false);
+            return results.get(0);
+        }
     }
 }
