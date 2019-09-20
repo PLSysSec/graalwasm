@@ -572,9 +572,8 @@ const_expr returns [WasmStatementNode result] // FIXME test
 
 func
   :                                             { WasmFunctionSignatureNode sig = factory.getFuncSignature(numFunc++); }
-                                                  //factory.registerType(sig, numType++); }
     LPAR FUNC bind_var?                         { factory.startFunction($bind_var.start, $LPAR); }
-    func_fields                                 { factory.finishFunction($func_fields.result); } // TODO do result check here
+    func_fields                                 { factory.finishFunction($func_fields.result, sig.getResults()); } // TODO do result check here
     RPAR
   ;
 
@@ -617,7 +616,7 @@ func_result_body returns [WasmStatementNode result]
     func_body                                   { $result = $func_body.result; }
   ;
 
-func_body returns [WasmStatementNode result] // FIXME WasmFunctionBodyNode ???
+func_body returns [WasmStatementNode result]
   :                                             { factory.startBlock();
                                                   Stack<WasmStatementNode> body = new Stack<WasmStatementNode>(); }
     (

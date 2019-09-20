@@ -2792,7 +2792,7 @@ public class WasmLanguageParser extends Parser {
 			 factory.startFunction((((FuncContext)_localctx).bind_var!=null?(((FuncContext)_localctx).bind_var.start):null), ((FuncContext)_localctx).LPAR); 
 			setState(566);
 			((FuncContext)_localctx).func_fields = func_fields();
-			 factory.finishFunction(((FuncContext)_localctx).func_fields.result); 
+			 factory.finishFunction(((FuncContext)_localctx).func_fields.result, sig.getResults()); 
 			setState(568);
 			match(RPAR);
 			}

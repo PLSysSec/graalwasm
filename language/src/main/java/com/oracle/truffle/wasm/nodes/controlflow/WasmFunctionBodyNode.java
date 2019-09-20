@@ -49,6 +49,7 @@ import com.oracle.truffle.wasm.nodes.controlflow.WasmBlockNode;
 import com.oracle.truffle.wasm.nodes.WasmExpressionNode;
 import com.oracle.truffle.wasm.nodes.WasmRootNode;
 import com.oracle.truffle.wasm.nodes.WasmStatementNode;
+import com.oracle.truffle.wasm.nodes.expression.WasmIntegerLiteralNode;
 import com.oracle.truffle.wasm.runtime.WasmNull;
 
 import java.util.ArrayList;
@@ -65,6 +66,7 @@ public final class WasmFunctionBodyNode extends WasmExpressionNode {
 
     /** The body of the function. */
     @Child private WasmStatementNode bodyNode;
+    private ArrayList<String> expResults;
 
     /**
      * Profiling information, collected by the interpreter, capturing whether the function had an
@@ -74,8 +76,9 @@ public final class WasmFunctionBodyNode extends WasmExpressionNode {
     private final BranchProfile exceptionTaken = BranchProfile.create();
     private final BranchProfile nullTaken = BranchProfile.create();
 
-    public WasmFunctionBodyNode(WasmStatementNode bodyNode) {
+    public WasmFunctionBodyNode(WasmStatementNode bodyNode, ArrayList<String> expResults) {
         this.bodyNode = bodyNode;
+        this.expResults = expResults;
         addRootTag();
     }
 
@@ -95,21 +98,59 @@ public final class WasmFunctionBodyNode extends WasmExpressionNode {
             return ex.getResult();
         }
 
-        ArrayList<Object> results = ((WasmBlockNode) bodyNode).getResultList();
+        ArrayList<Object> actResults = ((WasmBlockNode) bodyNode).getResultList();
+        if (actResults.size() > 1) {
+            throw new RuntimeException("refine result collection");
+        }
 
         /*
          * In the interpreter, record profiling information that the function ends without an
          * explicit return.
          */
-        if (results.isEmpty()) {
+        if (actResults.isEmpty() && expResults.isEmpty()) {
             nullTaken.enter();
             /* Return the default null value. */
             return WasmNull.SINGLETON;
         } else {
-            /* Return the last result from stack */
-            //Integer index = ((WasmRootNode) this.getParent()).getIndex();
-            //WasmLanguage.getCurrentContext().getFunctionRegistry().lookup(null, index, false);
-            return results.get(0);
+            /* Return result from stack */
+            int numExp = expResults.size();
+            int numAct = actResults.size();
+            if (numAct != numExp) { // numExp should not exceed 1, so numAct should not either
+                throw new RuntimeException("actual and expected number of results differ");
+            }
+
+            Object result = actResults.get(0);
+            String type = expResults.get(0);
+
+            // Type check result against function signature
+            switch (type) {
+                case "i32":
+                    if (!(result instanceof Integer)) {
+                        throw new RuntimeException("expected [i32] but got [" + result.getClass() + "]");
+                    }
+                    break;
+                case "i64":
+                    if (!(result instanceof Long)) {
+                        throw new RuntimeException("expected [i64] but got [" + result.getClass() + "]");
+                    }
+                    break;
+                case "f32":
+                    if (!(result instanceof Float)) {
+                        throw new RuntimeException("expected [f32] but got [" + result.getClass() + "]");
+                    }
+                    break;
+                case "f64":
+                    if (!(result instanceof Double)) {
+                        throw new RuntimeException("expected [f64] but got [" + result.getClass() + "]");
+                    }
+                    break;
+            }
+
+            return result;
         }
+    }
+
+    private String getTypeString(Class cls) {
+        return ""; // TODO
     }
 }

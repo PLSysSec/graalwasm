@@ -208,7 +208,7 @@ public class WasmNodeFactory {
         parameterCount++;
     }
 
-    public void finishFunction(WasmStatementNode bodyNode) {
+    public void finishFunction(WasmStatementNode bodyNode, ArrayList<String> expResults) {
         if (bodyNode == null) {
             // a state update that would otherwise be performed by finishBlock
             lexicalScope = lexicalScope.outer;
@@ -220,7 +220,7 @@ public class WasmNodeFactory {
             final WasmStatementNode methodBlock = finishBlock(methodNodes, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
             assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
-            final WasmFunctionBodyNode functionBodyNode = new WasmFunctionBodyNode(methodBlock);
+            final WasmFunctionBodyNode functionBodyNode = new WasmFunctionBodyNode(methodBlock, expResults);
             functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
 
             final WasmRootNode rootNode = new WasmRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName, functionIndex); // FIXME
@@ -249,7 +249,6 @@ public class WasmNodeFactory {
         }
 
         // Track number of result values left on stack
-        int resCount = 0;
         WasmFunctionSignatureNode sig = getFuncSignature(functionIndex);
 
         List<WasmStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
@@ -791,7 +790,7 @@ public class WasmNodeFactory {
             result.setSourceSection(startPos, endPos - startPos);
             result.addExpressionTag();
         }
-        result.addReturnTag(); // RESULT
+        result.addReturnTag();
 
         return result;
     }
@@ -801,7 +800,7 @@ public class WasmNodeFactory {
         int tableIndex;
         try {
             typeIndex = typeIndexNode.executeInt(null);
-            tableIndex = tableIndexNode.executeInt(null); //(VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameInstance.FrameAccess.READ_ONLY));
+            tableIndex = tableIndexNode.executeInt(null);
         } catch (UnexpectedResultException e) {
             throw new RuntimeException("unexpected result while trying to resolve indices for call_indirect: " + e);
         }
@@ -946,7 +945,7 @@ public class WasmNodeFactory {
             result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         }
         result.addExpressionTag();
-        result.addReturnTag(); // RESULT
+        result.addReturnTag();
         return result;
     }
 
